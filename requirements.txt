@@ -31,3 +31,14 @@ loguru
 
 # --- Docker / Deployment (si besoin) ---
 httpx
+
+ray[rllib]
+ipywidgets
+
+stable-baselines3 
+gym 
+numpy 
+pandas 
+matplotlib 
+tensorboard 
+yfinance
