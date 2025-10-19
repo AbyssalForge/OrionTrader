@@ -208,3 +208,5 @@ __marimo__/
 
 logs/*
 models/*
+tmp_models/*
+wandb/*
