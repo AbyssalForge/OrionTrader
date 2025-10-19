@@ -42,3 +42,8 @@ pandas
 matplotlib 
 tensorboard 
 yfinance
+optuna
+
+
+wandb 
+alibi-detect
