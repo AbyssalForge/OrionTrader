@@ -47,3 +47,5 @@ optuna
 
 wandb 
 alibi-detect
+
+nbformat
