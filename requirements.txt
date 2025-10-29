@@ -3,7 +3,7 @@ python-dotenv
 
 # --- API Server ---
 fastapi
-uvicorn[standard]
+uvicorn
 pydantic
 requests
 

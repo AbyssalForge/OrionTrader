@@ -44,3 +44,10 @@ L’agent Orion apprend à :
 ## 💡 Vision
 
 > “Comme Orion guide les navigateurs, OrionTrader guide vos décisions de marché avec la précision d’un modèle d’apprentissage par renforcement.”
+
+
+## commande
+
+evidently ui --workspace app/data/reports --port 8080
+
+uvicorn app.main:app --reload
