@@ -51,4 +51,3 @@ alibi-detect
 nbformat
 
 evidently 
-evidently-ui
