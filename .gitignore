@@ -210,3 +210,9 @@ logs/*
 models/*
 tmp_models/*
 wandb/*
+
+reinforcement_learning/data/*
+reinforcement_learning/logs/*
+reinforcement_learning/models/*
+reinforcement_learning/optuna_results/*
+reinforcement_learning/wandb/*

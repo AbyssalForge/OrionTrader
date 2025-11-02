@@ -50,4 +50,10 @@ alibi-detect
 
 nbformat
 
-evidently 
+evidently
+
+# langchain-core==0.3.12
+# langchain==0.3.7
+# langgraph==0.2.33
+
+finrl
