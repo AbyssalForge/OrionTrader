@@ -36,7 +36,6 @@ ray[rllib]
 ipywidgets
 
 stable-baselines3 
-gym 
 numpy 
 pandas 
 matplotlib 
@@ -57,3 +56,11 @@ evidently
 # langgraph==0.2.33
 
 finrl
+websockets
+
+prefect
+watchfiles
+
+exchange-calendars
+stockstats
+wrds

@@ -51,3 +51,5 @@ L’agent Orion apprend à :
 evidently ui --workspace app/data/reports --port 8080
 
 uvicorn app.main:app --reload
+
+prefect server start
