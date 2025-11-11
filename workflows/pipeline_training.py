@@ -1,135 +1,156 @@
-from prefect import flow, get_run_logger
+from prefect import flow, task, get_run_logger
 from utils.data_loader import import_data
-from utils.model import optimize_model
-from utils.hallucination import HallucinationCallback
-from utils.test_model import test_action_model
-from utils.metric import show_gain
-
-from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import DummyVecEnv
-from finrl.meta.env_stock_trading.env_stocktrading_np import StockTradingEnv
-from functools import partial
-import numpy as np
+from utils.model import find_best_hyperparams, train_final_model, save_trained_model, save_best_config
+from utils.metric import evaluate_model, show_gain
 import pandas as pd
-import optuna
+import mlflow
+import mlflow.sklearn
+import json
 import os
-import datetime
-from prefect import task
+import numpy as np
 
-# ---------------------------
-# TASKS
-# ---------------------------
 
-@task(name="Récupération et nettoyage des données", retries=3, retry_delay_seconds=10)
-def fetch_data() -> pd.DataFrame:
+# Chargement des données
+@task(name="Récupération et séparation des données", retries=3, retry_delay_seconds=10)
+def fetch_data_task():
     logger = get_run_logger()
-    df = import_data()
-    if df.empty:
-        raise ValueError("Aucune donnée importée !")
-    logger.info(f"✅ Données importées : {len(df)} lignes")
-    return df
+    df_train, df_test = import_data()
+
+    if df_train is None or df_test is None or df_train.empty or df_test.empty:
+        raise ValueError("Aucune donnée importée ou DataFrame vide !")
+
+    logger.info(f"✅ Données importées : {len(df_train)} train / {len(df_test)} test")
+    return df_train, df_test
 
 
-@task(name="Recherche des hyperparamètres optimaux", cache_key_fn=lambda _, __: "optuna_cache", persist_result=True)
-def find_hyperparametre(df: pd.DataFrame, n_trials: int = 20):
+# Recherche des hyperparamètres avec mise en cache locale (JSON)
+@task(name="Recherche des hyperparamètres optimaux")
+def hyperparam_optimization_task(df_train, n_trials: int = 20):
     logger = get_run_logger()
+    cache_path = "artifacts/best_hyperparams.json"
+    os.makedirs("artifacts", exist_ok=True)
 
-    price_array = df[['close']].values
+    # 🔹 Si un cache existe, on le charge pour éviter de relancer l'optimisation
+    if os.path.exists(cache_path):
+        logger.info("⚡ Chargement des hyperparamètres depuis le cache local.")
+        with open(cache_path, "r") as f:
+            data = json.load(f)
+        best_params, config = data["best_params"], data["config"]
+        return best_params, config
+
+    # 🔹 Sinon, on lance l’optimisation
+    best_params, config = find_best_hyperparams(df_train, n_trials)
+    logger.info(f"🏆 Meilleurs hyperparamètres trouvés : {best_params}")
+
+    # 🔸 Sauvegarde locale + MLflow
+    save_best_config(best_params, config)
+    if mlflow.active_run() is not None:
+        mlflow.log_params(best_params)
+
+    return best_params, config
+
+
+# Entraînement du modèle
+@task(name="Entraînement du modèle", retries=2, retry_delay_seconds=30)
+def train_model_task(best_params, df_train):
+    logger = get_run_logger()
+    model = train_final_model(best_params, df_train)
+    logger.info("📈 Modèle entraîné avec succès.")
+
+    if mlflow.active_run() is not None:
+        mlflow.sklearn.log_model(model, artifact_path="final_model")
+
+    return model
+
+# Évaluation du modèle de test
+@task(name="Évaluation du modèle sur données de test")
+def test_model_task(model, df_test):
+    logger = get_run_logger()
+    if not all(col in df_test.columns for col in ["close"]):
+        raise ValueError("Le DataFrame de test doit contenir la colonne 'close'.")
+
+    price_array = df_test[["close"]].values
     tech_array = np.column_stack([
-        df['close'].pct_change().fillna(0),
-        df['close'].rolling(5).mean().fillna(method='bfill')
+        df_test["close"].pct_change().fillna(0),
+        df_test["close"].rolling(5).mean().bfill()
     ])
-    turbulence_array = np.zeros(len(df))
-    if_train = True
+    turbulence_array = np.zeros(len(df_test))
 
-    config = {
+    config_test = {
         "price_array": price_array,
         "tech_array": tech_array,
         "turbulence_array": turbulence_array,
-        "if_train": if_train
+        "if_train": False
     }
 
-    study = optuna.create_study(direction="maximize")
-    objective = partial(optimize_model, config=config)
-    logger.info(f"🧪 Début optimisation avec {n_trials} essais (parallélisé) ...")
-    study.optimize(objective, n_trials=n_trials, n_jobs=-1)
+    actions_list, total_assets, env_test = evaluate_model(model, config_test)
+    gain_pct = (env_test.total_asset / env_test.initial_capital - 1) * 100
+    logger.info(f"💰 Gain total : {gain_pct:.2f}%")
 
-    logger.info(f"🏆 Meilleur params : {study.best_params}")
-    return study.best_params, config
+    if mlflow.active_run() is not None:
+        mlflow.log_metric("gain_pct", gain_pct)
 
-
-@task(name="Entraînement du modèle", retries=2, retry_delay_seconds=30)
-def train_model(best_params: dict, config: dict):
-    logger = get_run_logger()
-    logger.info(f"🔧 Entraînement avec paramètres : {best_params}")
-
-    env_train = DummyVecEnv([lambda: StockTradingEnv(config=config)])
-    final_model = PPO(
-        "MlpPolicy",
-        env_train,
-        learning_rate=best_params["learning_rate"],
-        n_steps=best_params["n_steps"],
-        gamma=best_params["gamma"],
-        clip_range=best_params["clip_range"],
-        ent_coef=best_params["ent_coef"],
-        verbose=1
-    )
-
-    halluc_cb = HallucinationCallback(env_train, verbose=1)
-    final_model.learn(total_timesteps=500_000, callback=halluc_cb)
-    logger.info("✅ Entraînement terminé")
-    return final_model
-
-
-@task(name="Test du modèle")
-def test_model(model, config: dict):
-    actions_list, total_assets, env_test = test_action_model(model, config)
-    
-    # Tracking dans Prefect UI
-    logger = get_run_logger()
-    if len(total_assets) > 0:
-        logger.info(f"💰 Solde initial : {env_test.initial_capital:.2f}")
-        logger.info(f"💰 Solde final : {env_test.total_asset:.2f}")
-        logger.info(f"📈 Gain total : {(env_test.total_asset/env_test.initial_capital - 1)*100:.2f}%")
-        logger.record("final_gain_pct", (env_test.total_asset/env_test.initial_capital - 1)*100)
-    logger.record("actions_count", len(actions_list))
-    
     return actions_list, total_assets, env_test
 
 
-@task(name="Afficher les gains")
-def show_profit(actions_list, total_assets, env_test, show_plot: bool = True):
-    if show_plot:
-        show_gain(actions_list, total_assets, env_test)
+# Visualisation des gains
+@task(name="Affichage des gains")
+def show_profit_task(actions_list, total_assets, env_test, show_plot=True):
+    show_gain(actions_list, total_assets, env_test, show_plot)
 
 
+# Sauvegarde du modèle
 @task(name="Sauvegarde du modèle")
-def save_model(model, base_path: str = "models") -> str:
+def save_model_task(model):
     logger = get_run_logger()
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = os.path.join(base_path, f"ppo_forex_{timestamp}.zip")
-    os.makedirs(base_path, exist_ok=True)
-    model.save(path)
-    logger.info(f"💾 Modèle sauvegardé : {path}")
+    path = save_trained_model(model)
+    logger.info(f"💾 Modèle sauvegardé sous : {path}")
+
+    if mlflow.active_run() is not None:
+        mlflow.log_artifact(path, artifact_path="saved_models")
+
     return path
 
 
-# ---------------------------
-# FLOW PRINCIPAL
-# ---------------------------
-
+# Flow principal Prefect
 @flow(name="Pipeline de Training Forex Metrics PRO")
-def training_pipeline(show_plot: bool = True, n_trials: int = 20):
-    df = fetch_data()
-    best_params, config = find_hyperparametre(df, n_trials=n_trials)
-    final_model = train_model(best_params, config)
-    actions_list, total_assets, env_test = test_model(final_model, config)
-    show_profit(actions_list, total_assets, env_test, show_plot)
-    save_model(final_model)
+def training_pipeline(show_plot=True, n_trials=1):
+    """
+    Pipeline d'entraînement complet :
+      1. Chargement des données
+      2. Recherche des hyperparamètres
+      3. Entraînement
+      4. Évaluation
+      5. Visualisation
+      6. Sauvegarde
+    """
+    logger = get_run_logger()
+
+    mlflow.set_tracking_uri("file:./mlruns")
+    mlflow.set_experiment("ForexMetricsPro")
+
+    with mlflow.start_run():
+        df_train, df_test = fetch_data_task()
+
+        mlflow.log_param("data_start", str(df_train["time"].min()))
+        mlflow.log_param("data_end", str(df_train["time"].max()))
+        mlflow.log_param("n_trials", n_trials)
+
+        # Hyperparamètres
+        best_params, config = hyperparam_optimization_task(df_train, n_trials)
+
+        # Entraînement
+        model = train_model_task(best_params, df_train)
+
+        # Test & Visualisation
+        actions_list, total_assets, env_test = test_model_task(model, df_test)
+        show_profit_task(actions_list, total_assets, env_test, show_plot)
+
+        # Sauvegarde finale
+        save_model_task(model)
+
+        logger.info("🎯 Pipeline terminé avec succès.")
 
 
-# ---------------------------
-# Lancer le flow
-# ---------------------------
 if __name__ == "__main__":
     training_pipeline()

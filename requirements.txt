@@ -56,11 +56,14 @@ evidently
 # langgraph==0.2.33
 
 finrl
-websockets
-
 prefect
 watchfiles
 
 exchange-calendars
 stockstats
 wrds
+
+alpaca_trade_api
+websockets==10.4
+
+mlflow

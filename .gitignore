@@ -216,3 +216,9 @@ reinforcement_learning/logs/*
 reinforcement_learning/models/*
 reinforcement_learning/optuna_results/*
 reinforcement_learning/wandb/*
+
+
+optuna_study.db
+mlruns/
+data/
+artifacts/
