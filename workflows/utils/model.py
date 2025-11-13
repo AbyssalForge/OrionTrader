@@ -83,16 +83,30 @@ class EquityVisualizerCallback(BaseCallback):
 # === ENVIRONNEMENT ===
 
 def make_env(df, seed=None, if_train=True):
-    """Construit un environnement StockTradingEnv avec les bons arrays."""
+    """Construit un environnement StockTradingEnv enrichi avec des features techniques."""
     def _init():
-                
-        price_array = df[['close']].values
+        # === 1️⃣ Ajout des features dérivées ===
+        df_local = df.copy()  # pour éviter les effets de bord
+        df_local["return"] = df_local["close"].pct_change().fillna(0)
+        df_local["high_low_range"] = (df_local["high"] - df_local["low"]) / df_local["close"]
+        df_local["open_close_diff"] = (df_local["close"] - df_local["open"]) / df_local["open"]
+        df_local["rolling_mean_5"] = df_local["close"].rolling(5).mean().bfill()
+        df_local["rolling_std_5"] = df_local["close"].rolling(5).std().bfill()
+
+        # === 2️⃣ Construction des tableaux ===
+        price_array = df_local[["close"]].values
+
         tech_array = np.column_stack([
-            df['close'].pct_change().fillna(0),
-            df['close'].rolling(5).mean().bfill()
+            df_local["return"],
+            df_local["high_low_range"],
+            df_local["open_close_diff"],
+            df_local["rolling_mean_5"],
+            df_local["rolling_std_5"]
         ])
+
         turbulence_array = np.zeros(len(df))
 
+        # === 3️⃣ Configuration de l'environnement ===
         config = {
             "price_array": price_array,
             "tech_array": tech_array,
@@ -105,9 +119,10 @@ def make_env(df, seed=None, if_train=True):
             env.reset(seed=seed)
         except TypeError:
             pass
-        return Monitor(env)
-    return _init
 
+        return Monitor(env)
+
+    return _init
 
 # === OPTIMISATION AVEC OPTUNA ===
 
@@ -229,10 +244,9 @@ def save_trained_model(model, metrics=None, base_path="models"):
     Sauvegarde le modèle entraîné + ses métriques associées dans un JSON à part.
     """
     os.makedirs(base_path, exist_ok=True)
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Nom du modèle et du JSON
-    model_name = f"ppo_forex_{timestamp}"
+    model_name = f"orion_model"
     model_path = os.path.join(base_path, f"{model_name}.zip")
     metrics_path = os.path.join(base_path, f"{model_name}_metrics.json")
 

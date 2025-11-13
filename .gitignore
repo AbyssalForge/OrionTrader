@@ -222,3 +222,5 @@ optuna_study.db
 mlruns/
 data/
 artifacts/
+
+!workflows/data/
