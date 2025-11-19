@@ -9,6 +9,11 @@ MLFLOW_DB_NAME="mlflow"
 MLFLOW_DB_USER="mlflow"
 MLFLOW_DB_PASSWORD="mlflow"
 
+until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do
+  echo "Postgres is not ready yet..."
+  sleep 2
+done
+
 # Créer les bases de données
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
     -- Créer les bases de données si elles n'existent pas
