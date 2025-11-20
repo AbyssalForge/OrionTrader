@@ -12,7 +12,7 @@ x-airflow-env: &airflow-env
 services:
   postgres:
     image: postgres:15
-    container_name: postgres
+    container_name: orion_postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -35,7 +35,7 @@ services:
 
   mlflow:
     image: python:3.11-slim
-    container_name: mlflow
+    container_name: orion_mlflow
     working_dir: /mlflow
     volumes:
       - ./mlflow/mlruns:/mlflow/mlruns
@@ -58,7 +58,7 @@ services:
 
   airflow:
     build: ./airflow
-    container_name: airflow
+    container_name: orion_airflow
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,7 +88,7 @@ services:
 
   fastapi:
     build: ./fastapi
-    container_name: fastapi
+    container_name: orion_fastapi
     depends_on:
       - mlflow
     environment:
@@ -101,9 +101,46 @@ services:
       - oriontrader_network
     restart: always
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: orion_prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - oriontrader_network
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: orion_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "3000:3000"
+    networks:
+      - oriontrader_network
+    depends_on:
+      - prometheus
+    restart: always
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: orion_pushgateway
+    ports:
+      - "9091:9091"
+    networks:
+      - oriontrader_network
+    restart: always
+
 networks:
   oriontrader_network:
     driver: bridge
 
 volumes:
   postgres-db-volume:
+  grafana-data:
