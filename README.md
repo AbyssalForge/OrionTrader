@@ -55,3 +55,5 @@ uvicorn app.main:app --reload
 prefect server start
 
 mlflow ui
+
+trouver le login pour airflow (docker): opt/airflow/simple_auth_manager_passwords.json.generated

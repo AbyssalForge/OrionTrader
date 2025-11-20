@@ -67,3 +67,7 @@ alpaca_trade_api
 websockets==10.4
 
 mlflow
+
+xgboost==1.7.6
+
+apache-airflow

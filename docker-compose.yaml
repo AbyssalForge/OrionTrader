@@ -1,0 +1,146 @@
+version: "3.9"
+
+x-airflow-env: &airflow-env
+  AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@postgres:5432/${AIRFLOW_DB_NAME}
+  AIRFLOW__DATABASE__LOAD_DEFAULT_CONNECTIONS: "false"
+  AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "True"
+  AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+  AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+  AIRFLOW_HOME: /opt/airflow
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: orion_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST_AUTH_METHOD: md5
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+    restart: always
+    ports:
+      - "5432:5432"
+    networks:
+      - oriontrader_network
+
+  mlflow:
+    image: python:3.11-slim
+    container_name: orion_mlflow
+    working_dir: /mlflow
+    volumes:
+      - ./mlflow/mlruns:/mlflow/mlruns
+    command: >
+      sh -c "pip install mlflow psycopg2-binary && 
+             sleep 5 &&
+             mlflow server 
+             --backend-store-uri postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@postgres:5432/${MLFLOW_DB_NAME} 
+             --default-artifact-root /mlflow/mlruns 
+             --host 0.0.0.0 
+             --port 5000"
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - oriontrader_network
+    restart: always
+
+  airflow:
+    build: ./airflow
+    container_name: orion_airflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *airflow-env
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    ports:
+      - "8080:8080"
+    networks:
+      - oriontrader_network
+    restart: always
+    entrypoint: /bin/bash
+    command: >
+      -c "
+        echo 'Waiting for database...' &&
+        sleep 15 &&
+        echo 'Initializing Airflow database...' &&
+        airflow db init &&
+        echo 'Creating admin user...' &&
+        airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin 2>/dev/null || echo 'Admin user already exists' &&
+        echo 'Starting Airflow standalone...' &&
+        airflow standalone
+      "
+
+  fastapi:
+    build: ./fastapi
+    container_name: orion_fastapi
+    depends_on:
+      - mlflow
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - ./mlflow/mlruns:/mlflow/mlruns:ro
+    ports:
+      - "8000:8000"
+    networks:
+      - oriontrader_network
+    restart: always
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: orion_prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - oriontrader_network
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: orion_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "3000:3000"
+    networks:
+      - oriontrader_network
+    depends_on:
+      - prometheus
+    restart: always
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: orion_pushgateway
+    ports:
+      - "9091:9091"
+    networks:
+      - oriontrader_network
+    restart: always
+
+networks:
+  oriontrader_network:
+    driver: bridge
+
+volumes:
+  postgres-db-volume:
+  grafana-data:
