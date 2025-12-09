@@ -1,18 +1,16 @@
 #!/bin/bash
 set -e
 
-# Les variables sont passées depuis le docker-compose via environment
-AIRFLOW_DB_NAME="${AIRFLOW_DB_NAME:-airflow}"
-AIRFLOW_DB_USER="${AIRFLOW_DB_USER:-airflow}"
-AIRFLOW_DB_PASSWORD="${AIRFLOW_DB_PASSWORD:-airflow}"
-MLFLOW_DB_NAME="${MLFLOW_DB_NAME:-mlflow}"
-MLFLOW_DB_USER="${MLFLOW_DB_USER:-mlflow}"
-MLFLOW_DB_PASSWORD="${MLFLOW_DB_PASSWORD:-mlflow}"
+echo "Waiting for PostgreSQL to be ready..."
+until PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB -c '\q' 2>/dev/null; do
+  echo "PostgreSQL is unavailable - sleeping"
+  sleep 2
+done
 
-echo "Starting database initialization..."
+echo "PostgreSQL is up - executing database initialization"
 
 # Créer les utilisateurs et bases de données
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB <<-EOSQL
     -- Créer les utilisateurs
     DO \$\$
     BEGIN
@@ -41,8 +39,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 EOSQL
 
 echo "Granting permissions for Airflow database..."
-# Connexion à la base Airflow pour accorder les permissions
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "${AIRFLOW_DB_NAME}" <<-EOSQL
+PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d ${AIRFLOW_DB_NAME} <<-EOSQL
     GRANT ALL ON SCHEMA public TO ${AIRFLOW_DB_USER};
     GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${AIRFLOW_DB_USER};
     GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${AIRFLOW_DB_USER};
@@ -51,8 +48,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "${AIRFLOW_DB_NAME}
 EOSQL
 
 echo "Granting permissions for MLflow database..."
-# Connexion à la base MLflow pour accorder les permissions
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "${MLFLOW_DB_NAME}" <<-EOSQL
+PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d ${MLFLOW_DB_NAME} <<-EOSQL
     GRANT ALL ON SCHEMA public TO ${MLFLOW_DB_USER};
     GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${MLFLOW_DB_USER};
     GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${MLFLOW_DB_USER};

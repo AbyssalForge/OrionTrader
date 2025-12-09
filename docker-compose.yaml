@@ -18,11 +18,17 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_HOST_AUTH_METHOD: md5
+      AIRFLOW_DB_NAME: ${AIRFLOW_DB_NAME}
+      AIRFLOW_DB_USER: ${AIRFLOW_DB_USER}
+      AIRFLOW_DB_PASSWORD: ${AIRFLOW_DB_PASSWORD}
+      MLFLOW_DB_NAME: ${MLFLOW_DB_NAME}
+      MLFLOW_DB_USER: ${MLFLOW_DB_USER}
+      MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD}
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
       - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -33,35 +39,66 @@ services:
     networks:
       - oriontrader_network
 
+  postgres-init:
+    image: postgres:15
+    container_name: orion_postgres_init
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      AIRFLOW_DB_NAME: ${AIRFLOW_DB_NAME}
+      AIRFLOW_DB_USER: ${AIRFLOW_DB_USER}
+      AIRFLOW_DB_PASSWORD: ${AIRFLOW_DB_PASSWORD}
+      MLFLOW_DB_NAME: ${MLFLOW_DB_NAME}
+      MLFLOW_DB_USER: ${MLFLOW_DB_USER}
+      MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD}
+    volumes:
+      - ./init-postgres.sh:/init-postgres.sh
+    command: sh /init-postgres.sh
+    networks:
+      - oriontrader_network
+    restart: "no"
+    labels:
+      - "com.docker.compose.oneoff=True"
+
   mlflow:
-    image: python:3.11-slim
+    build:
+      context: ./mlflow
+      dockerfile: Dockerfile
     container_name: orion_mlflow
     working_dir: /mlflow
     volumes:
       - ./mlflow/mlruns:/mlflow/mlruns
     command: >
-      sh -c "pip install mlflow psycopg2-binary && 
-             sleep 5 &&
-             mlflow server 
-             --backend-store-uri postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@postgres:5432/${MLFLOW_DB_NAME} 
-             --default-artifact-root /mlflow/mlruns 
-             --host 0.0.0.0 
-             --port 5000"
+      mlflow server
+      --backend-store-uri postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@postgres:5432/${MLFLOW_DB_NAME}
+      --default-artifact-root /mlflow/mlruns
+      --host 0.0.0.0
+      --port 5000
     ports:
       - "5000:5000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres-init:
+        condition: service_completed_successfully
     networks:
       - oriontrader_network
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   airflow:
     build: ./airflow
     container_name: orion_airflow
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres-init:
+        condition: service_completed_successfully
     environment:
       <<: *airflow-env
     volumes:
@@ -137,6 +174,23 @@ services:
       - oriontrader_network
     restart: always
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: orion_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    networks:
+      - oriontrader_network
+    depends_on:
+      - postgres
+    restart: always
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
 networks:
   oriontrader_network:
     driver: bridge
@@ -144,3 +198,4 @@ networks:
 volumes:
   postgres-db-volume:
   grafana-data:
+  pgadmin-data:
