@@ -96,27 +96,32 @@ services:
   airflow:
     build: ./airflow
     container_name: orion_airflow
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres-init:
         condition: service_completed_successfully
+      vault:
+        condition: service_started
     environment:
       <<: *airflow-env
+      PYTHONPATH: /opt/airflow:/opt/airflow/dags:/opt/airflow/utils:/opt/airflow/services
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
     volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
-      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow:/opt/airflow
+      - airflow-logs:/opt/airflow/logs
     ports:
       - "8080:8080"
     networks:
       - oriontrader_network
     restart: always
-    entrypoint: /bin/bash
     command: >
-      -c "
+      bash -c "
         echo 'Waiting for database...' &&
         sleep 15 &&
-        echo 'Initializing Airflow database...' &&
-        airflow db init &&
+        echo 'Migrating Airflow database...' &&
+        airflow db migrate &&
         echo 'Creating admin user...' &&
         airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin 2>/dev/null || echo 'Admin user already exists' &&
         echo 'Starting Airflow standalone...' &&
@@ -128,8 +133,11 @@ services:
     container_name: orion_fastapi
     depends_on:
       - mlflow
+      - vault
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
     volumes:
       - ./mlflow/mlruns:/mlflow/mlruns:ro
     ports:
@@ -191,6 +199,24 @@ services:
     volumes:
       - pgadmin-data:/var/lib/pgadmin
 
+  vault:
+    image: hashicorp/vault:latest
+    container_name: orion_vault
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_ROOT_TOKEN:-orion-root-token}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_ADDR: http://0.0.0.0:8200
+    ports:
+      - "8200:8200"
+    networks:
+      - oriontrader_network
+    restart: always
+    volumes:
+      - ./vault/policies:/vault/policies
+    cap_add:
+      - IPC_LOCK
+    command: server -dev -dev-listen-address=0.0.0.0:8200
+
 networks:
   oriontrader_network:
     driver: bridge
@@ -199,3 +225,4 @@ volumes:
   postgres-db-volume:
   grafana-data:
   pgadmin-data:
+  airflow-logs:
