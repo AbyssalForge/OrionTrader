@@ -254,3 +254,7 @@ def ma_fonction():
 ```
 
 ⚠️ **Note**: Configuration en mode développement. Pour la production, désactiver le mode `-dev` et activer TLS.
+
+python -m Pyro5.nameserver -p 9001
+python server.py
+python client.py

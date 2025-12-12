@@ -108,6 +108,8 @@ services:
       PYTHONPATH: /opt/airflow:/opt/airflow/dags:/opt/airflow/utils:/opt/airflow/services
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
+      MT5_HOST: ${MT5_HOST:-host.docker.internal}
+      MT5_PORT: ${MT5_PORT:-9090}
     volumes:
       - ./airflow:/opt/airflow
       - airflow-logs:/opt/airflow/logs

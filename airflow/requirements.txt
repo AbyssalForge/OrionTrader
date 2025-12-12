@@ -3,7 +3,7 @@ requests
 apache-airflow-providers-postgres
 apache-airflow
 hvac
-
+Pyro5
 #stable-baselines3
 #gymnasium
 #torch

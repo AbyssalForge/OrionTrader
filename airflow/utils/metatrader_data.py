@@ -21,9 +21,6 @@ PARQUET_PATH = f"data/{SYMBOL.lower()}_{TIMEFRAME}.parquet"
 MT5_LOGIN = int(vault.get_secret('MetaTrader', 'MT5_LOGIN'))
 MT5_PASSWORD = vault.get_secret('MetaTrader', 'MT5_PASSWORD')
 MT5_SERVER = vault.get_secret('MetaTrader', 'MT5_SERVER')
-MT5_HOST = vault.get_secret('MetaTrader', 'MT5_HOST')
-MT5_PORT = int(vault.get_secret('MetaTrader', 'MT5_PORT'))
-
 
 def connect_mt5(max_retries=3, wait_time=2):
     """Connexion robuste à MetaTrader 5 via RPyC"""

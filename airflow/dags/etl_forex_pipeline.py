@@ -9,7 +9,7 @@ from utils.vault_helper import get_vault
 
 from dotenv import load_dotenv
 
-from utils.metatrader_data import import_data
+from utils.mt5_server import import_data
 
 load_dotenv()
 
@@ -36,13 +36,12 @@ with DAG(
 
     @task
     def extract_data_from_metatrader():
-        df_train, df_test = import_data()
+        df  = pd.DataFrame.from_dict(import_data())
 
+        print(df.columns)
+        print(len(df))
         # Retourner un dictionnaire pour faciliter l'accès dans les tâches suivantes
-        return {
-            'train': df_train.to_dict('records'),
-            'test': df_test.to_dict('records')
-            }
+        return None
 
     @task
     def extract_data_from_scraping():
