@@ -170,6 +170,29 @@ récompense bonne sortie
 
 ```
 
+## 📁 Structure du Projet
+
+```
+OrionTrader/
+├── docker-init/           # Scripts d'initialisation Docker
+│   ├── init-db.sh        # Initialisation PostgreSQL
+│   ├── init-postgres.sh  # Configuration PostgreSQL
+│   ├── init-vault.sh     # Initialisation Vault (legacy)
+│   ├── vault-entrypoint.sh    # Entrypoint Vault
+│   └── vault-auto-unseal.sh   # Auto-déverrouillage Vault
+├── airflow/              # DAGs et configuration Airflow
+├── fastapi/              # API REST
+├── mlflow/               # Tracking ML
+├── metatrader/           # Connecteur MT5
+├── vault/                # Configuration et données Vault
+│   ├── config/          # Fichiers de config Vault
+│   ├── data/            # Données persistantes (non committé)
+│   └── policies/        # Policies Vault
+├── docker-compose.yaml   # Configuration Docker
+├── .env                  # Variables d'environnement (non committé)
+└── VAULT_SETUP.md       # Guide configuration Vault
+```
+
 ## 💱 FOREX = Foreign Exchange (marché des devises)
 
 Le ForeX est le marché mondial où s’échangent les monnaies, par exemple :
@@ -255,6 +278,12 @@ def ma_fonction():
 
 ⚠️ **Note**: Configuration en mode développement. Pour la production, désactiver le mode `-dev` et activer TLS.
 
-python -m Pyro5.nameserver -p 9001
+python -m Pyro5.nameserver -n 127.0.0.1 -p 9001
 python server.py
 python client.py
+
+
+docker exec orion_vault vault operator init -key-shares=1 -key-threshold=1
+
+docker-compose down vault
+docker-compose up -d vault

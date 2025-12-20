@@ -4,6 +4,7 @@ apache-airflow-providers-postgres
 apache-airflow
 hvac
 Pyro5
+alpha_vantage
 #stable-baselines3
 #gymnasium
 #torch

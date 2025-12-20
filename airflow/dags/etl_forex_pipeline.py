@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.sdk import task
+from airflow.utils.context import Context
+
 import os
 import pandas as pd
 import requests
@@ -10,6 +12,8 @@ from utils.vault_helper import get_vault
 from dotenv import load_dotenv
 
 from utils.mt5_server import import_data
+from utils.alpha_vantage import get_eurusd_intraday_15min, resample_to_15min, get_dxy_daily, get_us10y_treasury_yield, get_vix_daily
+from utils.document_helper import extract_documents
 
 load_dotenv()
 
@@ -35,73 +39,126 @@ with DAG(
 ):
 
     @task
-    def extract_data_from_metatrader():
-        df  = pd.DataFrame.from_dict(import_data())
+    def extract_data_from_metatrader(**context):
 
-        print(df.columns)
-        print(len(df))
-        # Retourner un dictionnaire pour faciliter l'accès dans les tâches suivantes
-        return None
+        base_path = "/data/mt5"
+        os.makedirs(base_path, exist_ok=True)
 
-    @task
-    def extract_data_from_scraping():
-        vault = get_vault()
-        secret = vault.get_secret('airflow', 'test')
-        print(f"Secret récupéré: {secret}")
-        return None
+        start = context["data_interval_start"]
+        end = context["data_interval_end"]
 
-    @task
-    def extract_data_from_document():
-        return None
+        df = pd.DataFrame.from_dict(
+            import_data(start=start, end=end)
+        )
+
+        path = f"{base_path}/eurusd_mt5.parquet"
+        df.to_parquet(path)
+
+        return path
 
     @task
-    def transform_data(mt5_data: dict):
-        """
-        Transforme les données.
-        """
-        if mt5_data is None:
-            return None
-
-        # Reconstruire les DataFrames depuis les dicts
-        df_train = pd.DataFrame(mt5_data['train'])
-        df_test = pd.DataFrame(mt5_data['test'])
-
-        # Appliquer vos transformations ici
-        # ...
-
+    def extract_data_from_api():
+        
+        base_path = "/data/api"
+        
+        df_fx = get_eurusd_intraday_15min()
+        df_dxy = resample_to_15min(get_dxy_daily())
+        df_yield = resample_to_15min(get_us10y_treasury_yield())
+        df_vix = resample_to_15min(get_vix_daily())
+        
+        df_fx.to_parquet(f"{base_path}/eurusd_fx.parquet")
+        df_dxy.to_parquet(f"{base_path}/dxy.parquet")
+        df_yield.to_parquet(f"{base_path}/us10y.parquet")
+        df_vix.to_parquet(f"{base_path}/vix.parquet")
+        
         return {
-            'train': df_train.to_dict('records'),
-            'test': df_test.to_dict('records')
+            "fx": f"{base_path}/eurusd_fx.parquet",
+            "dxy": f"{base_path}/dxy.parquet",
+            "yield": f"{base_path}/us10y.parquet",
+            "vix": f"{base_path}/vix.parquet",
         }
 
     @task
+    def extract_data_from_document():
+        paths = extract_documents()
+        return paths
+
+    @task
+    def transform_data(mt5_path: str, api_paths: dict, doc_paths: dict):
+        """
+        Merge les données MT5, API et documents.
+        Crée des features simples et sauvegarde en parquet.
+        """
+        base_path = "/data/processed"
+        os.makedirs(base_path, exist_ok=True)
+
+        # Lecture des données
+        df_mt5 = pd.read_parquet(mt5_path)
+        df_fx = pd.read_parquet(api_paths["fx"])
+        df_dxy = pd.read_parquet(api_paths["dxy"])
+        df_yield = pd.read_parquet(api_paths["yield"])
+        df_vix = pd.read_parquet(api_paths["vix"])
+
+        df_pib = pd.read_parquet(doc_paths["pib"])
+        df_cpi = pd.read_parquet(doc_paths["cpi"])
+        df_events = pd.read_parquet(doc_paths["events"])
+
+        # Assurer que toutes les dates sont en datetime
+        for df in [df_mt5, df_fx, df_dxy, df_yield, df_vix]:
+            df["time"] = pd.to_datetime(df["time"], utc=True)
+            df.set_index("time", inplace=True)
+
+        for df in [df_pib, df_cpi]:
+            df.index = pd.to_datetime(df.index, utc=True)
+
+        df_events["time"] = pd.to_datetime(df_events["time"], utc=True)
+        df_events.set_index("time", inplace=True)
+
+        # Merge
+        # Commence par MT5
+        df = df_mt5.copy()
+        
+        # Merge API (align 15min)
+        df = df.merge(df_fx, left_index=True, right_index=True, how="left", suffixes=('', '_fx'))
+        df = df.merge(df_dxy, left_index=True, right_index=True, how="left", suffixes=('', '_dxy'))
+        df = df.merge(df_yield, left_index=True, right_index=True, how="left", suffixes=('', '_yield'))
+        df = df.merge(df_vix, left_index=True, right_index=True, how="left", suffixes=('', '_vix'))
+
+        # Merge documents macro
+        df = df.merge(df_pib, left_index=True, right_index=True, how="left")
+        df = df.merge(df_cpi, left_index=True, right_index=True, how="left")
+
+        # Merge événements : dernier événement connu
+        df_events = df_events.sort_index()
+        df["event_title"] = df_events["title"].reindex(df.index, method="ffill")
+        df["event_impact"] = df_events["impact"].reindex(df.index, method="ffill")
+
+        # Features d’exemple
+        df["close_diff"] = df["close"].diff()
+        df["close_return"] = df["close"].pct_change()
+        df["volatility_rolling"] = df["close"].rolling(window=4).std()  # approx 1h sur M15
+
+        # Exemple feature macro : variation PIB (forward fill pour chaque ligne)
+        df["pib_change"] = df["eurozone_pib"].pct_change().fillna(0)
+        df["cpi_change"] = df["eurozone_cpi"].pct_change().fillna(0)
+
+        # Sauvegarde
+        out_path = os.path.join(base_path, "eurusd_features.parquet")
+        df.to_parquet(out_path)
+
+        return out_path
+ 
+
+    @task
     def load_to_db(data: dict):
-        """
-        Charge les données dans PostgreSQL.
-        """
-        if data is None:
-            return None
-
-        # TODO: Implémenter la sauvegarde en base
-        # conn = psycopg2.connect(...)
-        # df_train.to_sql('forex_train', conn, ...)
-
         return "Data loaded successfully"
 
     @task
     def validate(result: str):
-        """
-        Valide que les données sont correctement chargées.
-        """
-        if result:
-            return f"✅ Validation OK: {result}"
         return "❌ Validation failed"
 
     @task
     def notify(message: str):
-        """
-        Envoie une notification Discord.
-        """
         requests.post(DISCORD_WEBHOOK, json={"content": f"Pipeline ETL terminé: {message} 🚀"})
         return "Notification sent"
 
@@ -111,11 +168,11 @@ with DAG(
 
     # Extraction
     mt5_data = extract_data_from_metatrader()
-    # df_data_scrapping = extract_data_from_scraping()
-    # df_data_document = extract_data_from_document()
+    api_data = extract_data_from_api()
+    document_data = extract_data_from_document()
 
     # Transformation
-    transformed_data = transform_data(mt5_data)
+    transformed_data = transform_data(mt5_data, api_data, document_data)
 
     # Chargement
     load_result = load_to_db(transformed_data)

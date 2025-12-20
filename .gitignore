@@ -226,3 +226,4 @@ artifacts/
 !workflows/data/
 
 airflow/simple_auth_manager_passwords.json.generated
+.claude/settings.local.json
