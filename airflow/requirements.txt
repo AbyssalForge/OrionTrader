@@ -5,6 +5,10 @@ apache-airflow
 hvac
 Pyro5
 alpha_vantage
+pyarrow
+feedparser
+sqlalchemy
+psycopg2-binary
 #stable-baselines3
 #gymnasium
 #torch

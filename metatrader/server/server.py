@@ -1,11 +1,34 @@
 import Pyro5.api
 import MetaTrader5 as mt5
+import pandas as pd
 from utils.data_loader import import_data
 
 @Pyro5.api.expose
 class PriceServer:
-    def get_last_tick(self, symbol="EURUSD"):
-        df = import_data()
+    def get_last_tick(self, start=None, end=None, symbol="EURUSD"):
+        """
+        Récupère les données MT5 pour une période donnée.
+
+        Args:
+            start: Date de début (str ISO format ou None pour valeur par défaut)
+            end: Date de fin (str ISO format ou None pour valeur par défaut)
+            symbol: Symbole à récupérer (par défaut: EURUSD)
+
+        Returns:
+            dict: {"df": données au format dict}
+        """
+        print(f"[SERVER] Requête reçue - start: {start} (type: {type(start)})")
+        print(f"[SERVER] Requête reçue - end: {end} (type: {type(end)})")
+
+        # Convertir les dates ISO en Timestamp si fournies
+        if start:
+            start = pd.Timestamp(start)
+            print(f"[SERVER] start converti: {start}")
+        if end:
+            end = pd.Timestamp(end)
+            print(f"[SERVER] end converti: {end}")
+
+        df = import_data(start=start, end=end, symbol=symbol)
         return {
             "df": df.to_dict(orient="list")
         }

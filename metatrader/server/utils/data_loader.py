@@ -75,36 +75,48 @@ def connect_mt5(max_retries=3, wait_time=2):
     return False
 
 
-def import_data():
+def import_data(start=None, end=None, symbol=None):
     """
-    Télécharge les données depuis MT5 ou charge depuis cache local.
-    Retourne un DataFrame avec colonnes open, high, low, close.
+    Télécharge les données depuis MT5 pour une période donnée.
+    Ne charge PLUS depuis cache - toujours des données fraîches.
+
+    Args:
+        start: Date de début (Timestamp ou None pour valeur par défaut)
+        end: Date de fin (Timestamp ou None pour valeur par défaut)
+        symbol: Symbole à récupérer (str ou None pour EURUSD)
+
+    Returns:
+        DataFrame avec colonnes open, high, low, close, time
     """
+    # Valeurs par défaut
+    if start is None:
+        start = START
+    if end is None:
+        end = END
+    if symbol is None:
+        symbol = SYMBOL
 
-    # 🔹 Si fichier existant → on le réutilise
-    if os.path.exists(PARQUET_PATH):
-        df = pd.read_parquet(PARQUET_PATH)
+    # Connexion à MT5
+    if not connect_mt5():
+        raise RuntimeError("Impossible de se connecter à MetaTrader 5.")
 
-    else:
-        if not connect_mt5():
-            raise RuntimeError("Impossible de se connecter à MetaTrader 5.")
+    print(f"📊 Récupération données MT5: {symbol} de {start} à {end}")
 
-        rates = mt5.copy_rates_range(SYMBOL, TIMEFRAME, START.to_pydatetime(), END.to_pydatetime())
-        if rates is None or len(rates) == 0:
-            raise ValueError("❌ Aucune donnée reçue depuis MT5.")
+    # Récupération des données
+    rates = mt5.copy_rates_range(symbol, TIMEFRAME, start.to_pydatetime(), end.to_pydatetime())
 
-        df = pd.DataFrame(rates)
-        df["time"] = pd.to_datetime(df["time"], unit="s")
-        df.columns = df.columns.str.lower()
-        df.reset_index(drop=True, inplace=True)
-
-        os.makedirs(os.path.dirname(PARQUET_PATH), exist_ok=True)
-        df.to_parquet(PARQUET_PATH, index=False)
+    if rates is None or len(rates) == 0:
         mt5.shutdown()
+        raise ValueError(f"❌ Aucune donnée reçue depuis MT5 pour {symbol} ({start} - {end}).")
 
-    # 🔹 Format final (comme yfinance)
+    # Formatage
+    df = pd.DataFrame(rates)
+    df["time"] = pd.to_datetime(df["time"], unit="s")
+    df.columns = df.columns.str.lower()
     df = df.dropna().reset_index(drop=True)
-    
-    split_date = pd.Timestamp("2024-01-01")
+
+    mt5.shutdown()
+
+    print(f"✅ {len(df)} lignes récupérées")
 
     return df

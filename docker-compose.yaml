@@ -98,6 +98,9 @@ services:
     container_name: orion_airflow
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       postgres-init:
         condition: service_completed_successfully
