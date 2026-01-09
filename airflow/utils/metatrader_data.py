@@ -3,11 +3,8 @@ import pandas as pd
 import os
 import time
 
-from utils.vault_helper import get_vault
-
-# Importer notre client MT5 personnalisé qui utilise RPyC
-sys.path.insert(0, '/opt/airflow/utils')
-from mt5_client import MT5Client, MT5Timeframe
+from clients.vault_helper import get_vault
+from clients.mt5_client import MT5Client, MT5Timeframe
 
 vault = get_vault()
 

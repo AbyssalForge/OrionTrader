@@ -16,8 +16,7 @@ from .silver_service import (
 )
 
 from .gold_service import (
-    load_features_to_db,
-    create_ml_dataset
+    load_features_to_db
 )
 
 from .validation_service import (
@@ -26,7 +25,7 @@ from .validation_service import (
 )
 
 __all__ = [
-    # Bronze - Extract (→ .parquet)
+    # Bronze - Extract (→ .parquet staging)
     'initialize_database',
     'extract_mt5_data',
     'extract_stooq_data',
@@ -34,9 +33,8 @@ __all__ = [
     # Silver - Transform (.parquet → .parquet features)
     'transform_features',
     'apply_feature_engineering',
-    # Gold - Load (.parquet → DB) + ML datasets
+    # Gold - Load (.parquet → DB)
     'load_features_to_db',
-    'create_ml_dataset',
     # Validation
     'validate_data_quality',
     'send_discord_notification'

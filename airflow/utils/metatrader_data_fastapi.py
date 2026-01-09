@@ -13,8 +13,8 @@ Usage:
 
 import pandas as pd
 import os
-from utils.mt5_api_client import MT5APIClient, MT5Timeframe
-from utils.vault_helper import get_vault
+from clients.mt5_api_client import MT5APIClient, MT5Timeframe
+from clients.vault_helper import get_vault
 
 
 # Configuration

@@ -2,15 +2,17 @@
 Pipeline ETL EURUSD - Architecture Bronze/Silver/Gold
 Version 2.0 - Modular & Production-Ready
 
-Architecture ETL classique séparée:
-1. Extract (Bronze): Données sources → .parquet
-2. Transform (Silver): .parquet → Merge + Features → .parquet transformé
-3. Load (Gold): .parquet transformé → DB + ML datasets
+Architecture ETL classique:
+1. Bronze/Extract: Données sources → .parquet (staging uniquement)
+2. Silver/Transform: .parquet → Merge + Features → .parquet transformé
+3. Gold/Load: .parquet transformé → DB (table features_eurusd_m15)
 
 Workflow complet:
-- Bronze: Extract (.parquet staging)
-- Silver: Transform (harmonisation + feature engineering)
-- Gold: Load (DB) + ML datasets
+- Bronze: Extract vers .parquet (staging temporaire)
+- Silver: Transform (merge multi-horizon + feature engineering)
+- Gold: Load features finales en DB
+
+Note: La création des datasets ML est gérée dans un pipeline séparé
 """
 
 from datetime import datetime, timedelta
@@ -27,9 +29,8 @@ from services import (
     extract_eurostat_data,
     # Silver - Transform
     transform_features,
-    # Gold - Load + ML
+    # Gold - Load
     load_features_to_db,
-    create_ml_dataset,
     # Validation
     validate_data_quality,
     send_discord_notification
@@ -67,7 +68,7 @@ with DAG(
         return result
 
     # ===========================================================
-    # BRONZE - EXTRACT (Données sources → .parquet)
+    # BRONZE - EXTRACT (Données sources → .parquet staging)
     # ===========================================================
 
     @task
@@ -123,40 +124,32 @@ with DAG(
         return features_parquet
 
     # ===========================================================
-    # GOLD - LOAD (.parquet → DB) + ML DATASETS
+    # GOLD - LOAD (.parquet → DB features)
     # ===========================================================
 
     @task
     def load_to_db(features_parquet: str):
         """Gold/Load: .parquet → features_eurusd_m15 (DB)"""
-        print("[GOLD/LOAD] ==================== CHARGEMENT DB ====================")
+        print("[GOLD/LOAD] ==================== CHARGEMENT FEATURES → DB ====================")
         load_result = load_features_to_db(features_parquet)
         print("[GOLD/LOAD] ==================== FIN ====================")
         return load_result
-
-    @task
-    def create_ml_datasets(load_result: dict):
-        """Gold/ML: Features → ML datasets (TODO)"""
-        print("[GOLD/ML] ==================== ML DATASETS ====================")
-        ml_result = create_ml_dataset(load_result)
-        print("[GOLD/ML] ==================== FIN ====================")
-        return ml_result
 
     # ===========================================================
     # VALIDATION & NOTIFICATION
     # ===========================================================
 
     @task
-    def validate_pipeline(load_result: dict):
+    def validate_pipeline(gold_features: dict):
         """Validation complète du pipeline"""
         print("[VALIDATE] ==================== VALIDATION ====================")
 
-        # Créer des résultats fictifs pour Bronze (pas de DB Bronze)
+        # Pas de validation Bronze (pas de DB pour les données brutes)
         bronze_mt5 = {"status": "success", "rows": 0}
         bronze_stooq = {"status": "success", "rows": 0}
         bronze_eurostat = {"status": "success", "rows": 0}
 
-        result = validate_data_quality(bronze_mt5, bronze_stooq, bronze_eurostat, load_result)
+        result = validate_data_quality(bronze_mt5, bronze_stooq, bronze_eurostat, gold_features)
         print("[VALIDATE] ==================== FIN ====================")
         return result
 
@@ -180,19 +173,17 @@ with DAG(
     extract_stooq_task = extract_stooq()
     extract_eurostat_task = extract_eurostat()
 
-    # Silver - Transform
-    silver = transform(extract_mt5_task, extract_stooq_task, extract_eurostat_task)
+    # Silver - Transform (merge multi-horizon)
+    data_transform = transform(extract_mt5_task, extract_stooq_task, extract_eurostat_task)
 
-    # Gold - Load + ML
-    gold_load = load_to_db(silver)
-    gold_ml = create_ml_datasets(gold_load)
+    # Gold - Load features to DB
+    data_load = load_to_db(data_transform)
 
     # Validation & Notification
-    validation = validate_pipeline(gold_load)
+    validation = validate_pipeline(data_load)
     notification = notify(validation)
 
     # Dependencies
     init >> [extract_mt5_task, extract_stooq_task, extract_eurostat_task]
-    [extract_mt5_task, extract_stooq_task, extract_eurostat_task] >> silver
-    silver >> gold_load >> gold_ml
-    gold_load >> validation >> notification
+    [extract_mt5_task, extract_stooq_task, extract_eurostat_task] >> data_transform
+    data_transform >> data_load >> validation >> notification

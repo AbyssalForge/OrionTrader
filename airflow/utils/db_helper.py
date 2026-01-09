@@ -4,7 +4,7 @@ Centralise la gestion des connexions et sessions SQLAlchemy
 """
 
 from models import get_engine, get_session
-from utils.vault_helper import get_vault
+from clients.vault_helper import get_vault
 
 
 def get_db_engine():

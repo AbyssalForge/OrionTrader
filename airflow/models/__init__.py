@@ -1,43 +1,28 @@
 """
 Modèles de base de données pour OrionTrader
-Architecture Bronze/Silver/Gold avec SQLAlchemy ORM
+Pipeline ETL v2 - Uniquement la table features (Gold Layer)
 """
 
-from .database import (
-    # Base
+# Base et fonctions utilitaires
+from .base import (
     Base,
     get_engine,
     get_session,
     create_all_tables,
     drop_all_tables,
-
-    # Bronze Layer (Raw Data)
-    RawMT5EURUSDM15,
-    RawStooqDaily,
-    RawEurostatMacro,
-    RawEconomicEvents,
-
-    # Silver Layer (Features)
-    FeaturesEURUSDM15,
-
-    # Gold Layer (ML Datasets)
-    MLClassificationDataset,
-    MLRegressionDataset,
-    RLEnvironmentState,
 )
 
+# Gold Layer - Features finales
+from .FeaturesEURUSDM15 import FeaturesEURUSDM15
+
 __all__ = [
+    # Base
     'Base',
     'get_engine',
     'get_session',
     'create_all_tables',
     'drop_all_tables',
-    'RawMT5EURUSDM15',
-    'RawStooqDaily',
-    'RawEurostatMacro',
-    'RawEconomicEvents',
+
+    # Gold Layer - Table unique du pipeline v2
     'FeaturesEURUSDM15',
-    'MLClassificationDataset',
-    'MLRegressionDataset',
-    'RLEnvironmentState',
 ]

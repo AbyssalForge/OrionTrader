@@ -2,7 +2,7 @@ import requests
 import pandas as pd
 import time
 from datetime import datetime, timedelta
-from utils.vault_helper import get_vault
+from clients.vault_helper import get_vault
 
 vault = get_vault()
 
@@ -96,9 +96,6 @@ def _get_stooq_data(symbol: str, days: int = 365, interval: str = 'd') -> pd.Dat
     except Exception as e:
         raise ValueError(f"Erreur lors de la récupération de {symbol} sur Stooq: {str(e)}")
 
-
-# ========== FOREX (Daily) - Contexte macro ==========
-
 def get_eurusd_daily_stooq(days: int = 365) -> pd.DataFrame:
     """
     Récupère EUR/USD en daily via Stooq (gratuit, sans API key)
@@ -128,8 +125,6 @@ def get_usdjpy_daily_stooq(days: int = 365) -> pd.DataFrame:
     """
     return _get_stooq_data('usdjpy', days=days, interval='d')
 
-
-# ========== INDICES - Contexte macro ==========
 
 def get_dxy_daily_stooq(days: int = 365) -> pd.DataFrame:
     """
@@ -167,8 +162,6 @@ def get_dji_daily_stooq(days: int = 365) -> pd.DataFrame:
     return _get_stooq_data('^dji', days=days, interval='d')
 
 
-# ========== COMMODITIES - Or ==========
-
 def get_gold_daily_stooq(days: int = 365) -> pd.DataFrame:
     """
     Récupère l'or (XAU/USD) en daily via Stooq
@@ -186,8 +179,6 @@ def get_silver_daily_stooq(days: int = 365) -> pd.DataFrame:
     return _get_stooq_data('xagusd', days=days, interval='d')
 
 
-# ========== INTRADAY (optionnel pour vérification) ==========
-
 def get_eurusd_intraday_5min_stooq(days: int = 7) -> pd.DataFrame:
     """
     Récupère EUR/USD en 5 minutes via Stooq (gratuit, sans API key)
@@ -202,8 +193,6 @@ def get_eurusd_intraday_5min_stooq(days: int = 7) -> pd.DataFrame:
     """
     return _get_stooq_data('eurusd', days=days, interval='5')
 
-
-# ========== FONCTION COMPLÈTE - Contexte Macro ==========
 
 def get_macro_context_stooq(days: int = 365) -> dict:
     """
