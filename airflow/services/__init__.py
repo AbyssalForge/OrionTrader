@@ -3,20 +3,24 @@ Services module - Business logic pour le pipeline ETL
 Contient la logique métier appelée par les tasks Airflow
 """
 
+from .bdd_service import initialize_database
+
 from .bronze_service import (
-    initialize_database,
     extract_mt5_data,
     extract_stooq_data,
     extract_eurostat_data
 )
 
 from .silver_service import (
-    transform_features,
-    apply_feature_engineering
+    transform_mt5_features,
+    transform_yahoo_features,
+    transform_documents_features
 )
 
 from .gold_service import (
-    load_features_to_db
+    load_mt5_to_db,
+    load_yahoo_to_db,
+    load_documents_to_db
 )
 
 from .validation_service import (
@@ -31,10 +35,13 @@ __all__ = [
     'extract_stooq_data',
     'extract_eurostat_data',
     # Silver - Transform (.parquet → .parquet features)
-    'transform_features',
-    'apply_feature_engineering',
+    'transform_mt5_features',
+    'transform_yahoo_features',
+    'transform_documents_features',
     # Gold - Load (.parquet → DB)
-    'load_features_to_db',
+    'load_mt5_to_db',
+    'load_yahoo_to_db',
+    'load_documents_to_db',
     # Validation
     'validate_data_quality',
     'send_discord_notification'

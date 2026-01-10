@@ -227,3 +227,6 @@ artifacts/
 
 airflow/simple_auth_manager_passwords.json.generated
 .claude/settings.local.json
+# Archive fichiers obsolètes
+archive_obsolete/
+airflow/utils/archive_obsolete_utils/

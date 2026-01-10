@@ -1,6 +1,6 @@
 """
 Modèles de base de données pour OrionTrader
-Pipeline ETL v2 - Uniquement la table features (Gold Layer)
+Pipeline ETL v3 - Architecture 4 tables séparées par source + composites
 """
 
 # Base et fonctions utilitaires
@@ -12,8 +12,10 @@ from .base import (
     drop_all_tables,
 )
 
-# Gold Layer - Features finales
-from .FeaturesEURUSDM15 import FeaturesEURUSDM15
+# Architecture 4 Tables Séparées (v3.0)
+from .MT5EURUSDM15 import MT5EURUSDM15
+from .YahooFinanceDaily import YahooFinanceDaily
+from .DocumentsMacro import DocumentsMacro
 
 __all__ = [
     # Base
@@ -23,6 +25,12 @@ __all__ = [
     'create_all_tables',
     'drop_all_tables',
 
-    # Gold Layer - Table unique du pipeline v2
+    # Architecture v3.0 - 4 tables séparées par source
+    'MT5EURUSDM15',           # Table 1: MT5 local (M15)
+    'YahooFinanceDaily',      # Table 2: Yahoo Finance API (Daily)
+    'DocumentsMacro',         # Table 3: Documents économiques (Monthly/Annual)
+    'FeaturesComposites',     # Table 4: Features composites (cross-source)
+
+    # Legacy v2.0 - Table unifiée (backup)
     'FeaturesEURUSDM15',
 ]
