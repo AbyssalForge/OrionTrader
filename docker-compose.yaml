@@ -137,14 +137,17 @@ services:
     build: ./fastapi
     container_name: orion_fastapi
     depends_on:
-      - mlflow
-      - vault
+      postgres:
+        condition: service_healthy
     environment:
-      MLFLOW_TRACKING_URI: http://mlflow:5000
+      # Mode (development ou production)
+      ENVIRONMENT: ${FASTAPI_ENVIRONMENT:-development}
+      # Optional: MLFlow et Vault
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
     volumes:
-      - ./mlflow/mlruns:/mlflow/mlruns:ro
+      - ./fastapi:/app:rw  # Mount code pour hot-reload en dev
+      - ./airflow:/opt/airflow:ro  # Access aux models
     ports:
       - "8000:8000"
     networks:

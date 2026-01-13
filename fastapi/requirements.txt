@@ -1,6 +1,10 @@
-fastapi
-uvicorn
-mlflow
-pydantic
-hvac
-requests
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.5
+pydantic-settings==2.7.1
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+pandas==2.2.3
+python-dotenv==1.0.1
+requests==2.32.3
+hvac==2.3.0

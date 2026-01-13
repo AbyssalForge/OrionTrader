@@ -206,18 +206,19 @@ def etl_forex():
 
     @task
     def validate_pipeline(mt5_result: dict, yahoo_result: dict, docs_result: dict, snapshot_loaded: dict):
-        """Validation: Vérifier qualité données dans les 3 tables"""
+        """Validation: Vérifier qualité données dans les 4 tables"""
         print("[VALIDATE] ==================== VALIDATION ====================")
 
-        # Consolider les résultats des 3 loads
+        # Consolider les résultats des 4 loads
         validation_result = validate_data_quality(
             mt5_result=mt5_result,
             yahoo_result=yahoo_result,
-            docs_result=docs_result
+            docs_result=docs_result,
+            snapshot_result=snapshot_loaded
         )
 
         print(f"[VALIDATE] Statut global: {validation_result.get('status')}")
-        print(f"[VALIDATE] Tables OK: {validation_result.get('tables_ok', 0)}/3")
+        print(f"[VALIDATE] Tables OK: {validation_result.get('tables_ok', 0)}/4")
         print("[VALIDATE] ==================== FIN ====================")
 
         return validation_result

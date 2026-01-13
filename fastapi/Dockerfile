@@ -2,8 +2,12 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Installer dépendances système (optionnel mais utile)
-RUN apt-get update && apt-get install -y build-essential && apt-get clean
+# Installer dépendances système nécessaires pour psycopg2
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copier requirements FastAPI
 COPY requirements.txt /app/requirements.txt
@@ -14,5 +18,10 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 # Copier ton code FastAPI
 COPY . /app
 
-# Démarrer Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Rendre le script d'entrée exécutable
+RUN chmod +x /app/entrypoint.sh
+
+# Démarrer Uvicorn via entrypoint
+# Mode développement: docker run -e ENVIRONMENT=development ...
+# Mode production: docker run (par défaut)
+ENTRYPOINT ["/app/entrypoint.sh"]

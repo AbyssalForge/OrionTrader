@@ -1,5 +1,5 @@
 """
-Helper simplifié pour accéder à HashiCorp Vault dans FastAPI
+Helper simplifié pour accéder à HashiCorp Vault dans Airflow
 """
 
 import hvac
@@ -8,12 +8,15 @@ from functools import lru_cache
 
 
 class VaultHelper:
-    """Helper pour simplifier l'accès à Vault dans FastAPI"""
+    """Helper pour simplifier l'accès à Vault dans vos DAGs"""
 
     def __init__(self):
         """Initialise la connexion à Vault"""
-        self.vault_addr = os.getenv('VAULT_ADDR', 'http://vault:8200')
-        self.vault_token = os.getenv('VAULT_TOKEN', 'orion-root-token')
+        self.vault_addr = os.getenv('VAULT_ADDR')
+        self.vault_token = os.getenv('VAULT_TOKEN')
+
+        print(self.vault_addr)
+        print(self.vault_token)
 
         self.client = hvac.Client(
             url=self.vault_addr,
@@ -61,12 +64,12 @@ class VaultHelper:
         Crée ou met à jour un secret dans Vault
 
         Args:
-            path: Chemin du secret (ex: 'api/results')
+            path: Chemin du secret (ex: 'airflow/results')
             **kwargs: Paires clé-valeur à stocker
 
         Example:
             vault = get_vault()
-            vault.set_secret('api/last-trade',
+            vault.set_secret('airflow/last-run',
                 timestamp='2024-01-01',
                 status='success',
                 profit=1234.56
@@ -107,13 +110,12 @@ def get_vault() -> VaultHelper:
     """
     Retourne une instance singleton de VaultHelper
 
-    Example dans FastAPI:
+    Example dans un DAG:
         from utils.vault_helper import get_vault
 
-        @app.get("/")
-        def index():
+        def ma_fonction():
             vault = get_vault()
             api_key = vault.get_secret('api/binance', 'api_key')
-            return {"key": api_key[:5]}
+            print(f"API Key: {api_key[:5]}...")
     """
     return VaultHelper()
