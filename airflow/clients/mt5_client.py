@@ -1,28 +1,39 @@
 """
 Client MT5 pour se connecter au serveur MetaTrader5 via RPyC.
 Utilisé par les DAGs Airflow pour accéder aux données de trading.
+Utilise HashiCorp Vault pour récupérer les credentials.
 """
 import os
 import rpyc
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from config.data_sources import get_config
 
 
 class MT5Client:
     """Client pour interagir avec MetaTrader5 via RPyC."""
 
-    def __init__(self, host: str = "metatrader5", port: int = 8001):
+    def __init__(self, host: str = "metatrader5", port: int = 8001, use_vault: bool = True):
         """
         Initialise le client MT5.
 
         Args:
             host: Hostname du serveur MT5 (par défaut: metatrader5)
             port: Port du serveur RPyC (par défaut: 8001)
+            use_vault: Utiliser Vault pour récupérer les credentials (par défaut: True)
         """
         self.host = host
         self.port = port
         self.connection = None
         self.mt5 = None
+        self.use_vault = use_vault
+
+        # Récupérer les credentials depuis Vault si activé
+        if self.use_vault:
+            config = get_config()
+            self.credentials = config.get_mt5_config()
+        else:
+            self.credentials = None
 
     def connect(self):
         """Établit la connexion au serveur MT5."""
@@ -61,17 +72,25 @@ class MT5Client:
                    server: Optional[str] = None) -> bool:
         """
         Initialise la connexion à MetaTrader5.
+        Si les credentials ne sont pas fournis, utilise ceux de Vault.
 
         Args:
-            login: Numéro de compte (optionnel)
-            password: Mot de passe (optionnel)
-            server: Serveur de trading (optionnel)
+            login: Numéro de compte (optionnel, utilise Vault si non fourni)
+            password: Mot de passe (optionnel, utilise Vault si non fourni)
+            server: Serveur de trading (optionnel, utilise Vault si non fourni)
 
         Returns:
             True si succès, False sinon
         """
         if not self.connection:
             self.connect()
+
+        # Utiliser les credentials de Vault si disponibles et non fournis
+        if not (login and password and server) and self.credentials:
+            login = login or int(self.credentials.get('MT5_LOGIN'))
+            password = password or self.credentials.get('MT5_PASSWORD')
+            server = server or self.credentials.get('MT5_SERVER')
+            print(f"[MT5] Using credentials from Vault: {login}@{server}")
 
         if login and password and server:
             return self.mt5.initialize(login, password, server)

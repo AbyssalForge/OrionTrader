@@ -17,9 +17,6 @@ class VaultHelper:
         self.vault_addr = os.getenv('VAULT_ADDR')
         self.vault_token = os.getenv('VAULT_ROOT_TOKEN')
 
-        print(self.vault_addr)
-        print(self.vault_token)
-
         self.client = hvac.Client(
             url=self.vault_addr,
             token=self.vault_token

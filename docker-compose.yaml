@@ -57,7 +57,7 @@ services:
       MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD}
     volumes:
       - ./docker-init/init-postgres.sh:/init-postgres.sh
-    command: sh /init-postgres.sh
+    command: bash /init-postgres.sh
     networks:
       - oriontrader_network
     restart: "no"
@@ -108,7 +108,7 @@ services:
         condition: service_started
     environment:
       <<: *airflow-env
-      PYTHONPATH: /opt/airflow:/opt/airflow/dags:/opt/airflow/utils:/opt/airflow/services
+      PYTHONPATH: /opt/airflow:/opt/airflow/dags:/opt/airflow/utils:/opt/airflow/services:/opt/airflow/clients:/opt/airflow/config
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
       MT5_HOST: ${MT5_HOST:-host.docker.internal}

@@ -109,17 +109,26 @@ def transform_yahoo_features(yahoo_parquets: dict) -> str:
             df_symbol = df_symbol.reset_index()
 
         df_symbol['time'] = pd.to_datetime(df_symbol['time'], utc=True)
+
+        # IMPORTANT: Normaliser les timestamps à minuit (00:00:00) pour éviter les doublons
+        # Yahoo Finance peut renvoyer des timestamps avec différentes heures (12:00, 16:00, etc.)
+        df_symbol['time'] = df_symbol['time'].dt.normalize()
+
         df_symbol = df_symbol.set_index('time').sort_index()
+
+        # Si des doublons existent après normalisation, garder le dernier
+        df_symbol = df_symbol[~df_symbol.index.duplicated(keep='last')]
 
         # Sélectionner close
         if 'close' in df_symbol.columns:
             dfs[symbol] = df_symbol[['close']].rename(columns={'close': f'{symbol}_close'})
 
-    # Merger tous les symboles
-    df = pd.concat(dfs.values(), axis=1)
+    # Merger tous les symboles avec outer join (garder toutes les dates)
+    df = pd.concat(dfs.values(), axis=1, join='outer')
 
     print(f"[SILVER/YAHOO]   Shape brute: {df.shape}")
     print(f"[SILVER/YAHOO]   Période: {df.index.min()} -> {df.index.max()}")
+    print(f"[SILVER/YAHOO]   Actifs mergés: {len(dfs)}")
 
     # Feature engineering Yahoo
     df = _add_yahoo_features(df)
@@ -292,13 +301,13 @@ def _add_event_features(df: pd.DataFrame) -> pd.DataFrame:
 # TRANSFORMATION 4/4 - FEATURES COMPOSITES
 # ============================================================================
 
-def transform_composites_features(
+def transform_market_snapshot(
     mt5_parquet: str,
     yahoo_parquet: str,
     documents_parquet: str
 ) -> str:
     """
-    Calcule les features composites depuis les 3 sources
+    Calcule market snapshot avec toutes les features composites et foreign keys
 
     Args:
         mt5_parquet: Chemin features MT5
@@ -306,72 +315,204 @@ def transform_composites_features(
         documents_parquet: Chemin features Documents
 
     Returns:
-        str: Chemin du fichier .parquet transformé
+        str: Chemin du fichier .parquet transformé (market_snapshot_m15.parquet)
     """
-    print("[SILVER/COMPOSITES] Calcul features composites...")
+    print("[SILVER/SNAPSHOT] Calcul market snapshot M15...")
 
     # Charger les 3 sources
     df_mt5 = pd.read_parquet(mt5_parquet)
     df_yahoo = pd.read_parquet(yahoo_parquet)
     df_docs = pd.read_parquet(documents_parquet)
 
-    # Merger (daily -> M15 avec merge_asof)
+    # Préparer pour merge_asof
     df_mt5_reset = df_mt5.reset_index()
     df_yahoo_reset = df_yahoo.reset_index()
+    df_docs_reset = df_docs.reset_index()
 
+    # Renommer les colonnes time avant le merge pour pouvoir les récupérer
+    df_yahoo_reset = df_yahoo_reset.rename(columns={'time': 'yahoo_time'})
+    df_docs_reset = df_docs_reset.rename(columns={'time': 'docs_time'})
+
+    # Merger Yahoo (daily -> M15)
     df_merged = pd.merge_asof(
         df_mt5_reset.sort_values('time'),
-        df_yahoo_reset.sort_values('time'),
-        on='time',
+        df_yahoo_reset.sort_values('yahoo_time'),
+        left_on='time',
+        right_on='yahoo_time',
         direction='backward'
     )
 
-    # Merger documents (monthly -> M15)
-    df_docs_reset = df_docs.reset_index()
+    # Merger Documents (monthly -> M15)
     df_merged = pd.merge_asof(
         df_merged.sort_values('time'),
-        df_docs_reset.sort_values('time'),
-        on='time',
+        df_docs_reset.sort_values('docs_time'),
+        left_on='time',
+        right_on='docs_time',
         direction='backward'
     )
 
     df_merged = df_merged.set_index('time')
 
-    # Calculer composites
-    df_composites = pd.DataFrame(index=df_merged.index)
+    # Créer DataFrame snapshot
+    df_snapshot = pd.DataFrame(index=df_merged.index)
+
+    # ===== FOREIGN KEYS =====
+    df_snapshot['mt5_time'] = df_merged.index  # FK vers MT5 (toujours présent)
+    df_snapshot['yahoo_time'] = df_merged['yahoo_time']  # FK vers Yahoo (backward fill)
+    df_snapshot['docs_time'] = df_merged['docs_time']  # FK vers Documents (backward fill)
+
+    # ===== FEATURES COMPOSITES MULTI-SOURCES =====
+    df_snapshot = _calculate_composite_features(df_snapshot, df_merged)
+
+    # ===== RÉGIMES ET CLASSIFICATIONS =====
+    df_snapshot = _calculate_regimes(df_snapshot, df_merged)
+
+    # ===== SCORES ET MÉTRIQUES =====
+    df_snapshot = _calculate_scores(df_snapshot, df_merged)
+
+    # ===== EVENT MANAGEMENT =====
+    df_snapshot = _calculate_event_window(df_snapshot, df_merged)
+
+    print(f"[SILVER/SNAPSHOT]   Shape: {df_snapshot.shape}")
+    print(f"[SILVER/SNAPSHOT]   Colonnes: {list(df_snapshot.columns)}")
+
+    # Sauvegarde
+    output_path = "data/processed/market_snapshot_m15.parquet"
+    os.makedirs("data/processed", exist_ok=True)
+    df_snapshot.to_parquet(output_path)
+
+    print(f"[SILVER/SNAPSHOT] OK: {len(df_snapshot)} lignes -> {output_path}")
+    return output_path
+
+
+def _calculate_composite_features(df_snapshot: pd.DataFrame, df_merged: pd.DataFrame) -> pd.DataFrame:
+    """Calcule macro_micro_aligned et euro_strength_bias"""
+    print("[SILVER/SNAPSHOT]   Calcul features composites...")
 
     # 1. macro_micro_aligned (DXY vs EUR/USD)
     if 'dxy_trend_1h' in df_merged.columns and 'close_return' in df_merged.columns:
         dxy_trend = df_merged['dxy_trend_1h'].fillna(0)
         eur_return = df_merged['close_return'].fillna(0)
 
-        df_composites['macro_micro_aligned'] = np.where(
+        df_snapshot['macro_micro_aligned'] = np.where(
             (dxy_trend < 0) & (eur_return > 0), 1,
             np.where((dxy_trend > 0) & (eur_return < 0), -1, 0)
         )
     else:
-        df_composites['macro_micro_aligned'] = 0
+        df_snapshot['macro_micro_aligned'] = 0
 
     # 2. euro_strength_bias (PIB + risk_on)
-    # NOTE: Utilise pib_change au lieu de pib_growth car trop peu de données PIB
-    # pib_change montre la tendance (croissance accélère ou ralentit)
     if 'pib_change' in df_merged.columns and 'risk_on' in df_merged.columns:
         pib_change = df_merged['pib_change'].fillna(0)
         risk_on = df_merged['risk_on'].fillna(0)
 
-        df_composites['euro_strength_bias'] = np.where(
-            (pib_change > 0) & (risk_on == 1), 1,  # PIB croît + risk on → EUR fort
-            np.where((pib_change < 0) & (risk_on == 0), -1, 0)  # PIB décroît + risk off → EUR faible
+        df_snapshot['euro_strength_bias'] = np.where(
+            (pib_change > 0) & (risk_on == 1), 1,
+            np.where((pib_change < 0) & (risk_on == 0), -1, 0)
         )
     else:
-        df_composites['euro_strength_bias'] = 0
+        df_snapshot['euro_strength_bias'] = 0
 
-    print(f"[SILVER/COMPOSITES]   Shape: {df_composites.shape}")
+    return df_snapshot
 
-    # Sauvegarde
-    output_path = "data/processed/composites_features.parquet"
-    os.makedirs("data/processed", exist_ok=True)
-    df_composites.to_parquet(output_path)
 
-    print(f"[SILVER/COMPOSITES] OK: {len(df_composites)} lignes -> {output_path}")
-    return output_path
+def _calculate_regimes(df_snapshot: pd.DataFrame, df_merged: pd.DataFrame) -> pd.DataFrame:
+    """Calcule regime_composite et volatility_regime"""
+    print("[SILVER/SNAPSHOT]   Calcul régimes...")
+
+    # 1. regime_composite (marché global)
+    if 'vix_close' in df_merged.columns and 'risk_on' in df_merged.columns and 'safe_haven' in df_merged.columns:
+        vix = df_merged['vix_close'].fillna(20)
+        risk_on = df_merged['risk_on'].fillna(0)
+        safe_haven = df_merged['safe_haven'].fillna(0)
+        market_stress = df_merged['market_stress'].fillna(0)
+
+        df_snapshot['regime_composite'] = 'neutral'
+        df_snapshot.loc[(vix < 15) & (risk_on == 1), 'regime_composite'] = 'risk_on'
+        df_snapshot.loc[(vix > 25) & (safe_haven == 1), 'regime_composite'] = 'risk_off'
+        df_snapshot.loc[market_stress == 1, 'regime_composite'] = 'volatile'
+    else:
+        df_snapshot['regime_composite'] = 'neutral'
+
+    # 2. volatility_regime (volatilité relative)
+    if 'volatility_1h' in df_merged.columns:
+        vol = df_merged['volatility_1h'].fillna(0)
+        vol_ma = vol.rolling(100, min_periods=1).mean()
+        vol_percentile = vol / vol_ma.replace(0, 1)
+
+        df_snapshot['volatility_regime'] = 'normal'
+        df_snapshot.loc[vol_percentile < 0.5, 'volatility_regime'] = 'low'
+        df_snapshot.loc[vol_percentile > 1.5, 'volatility_regime'] = 'high'
+    else:
+        df_snapshot['volatility_regime'] = 'normal'
+
+    return df_snapshot
+
+
+def _calculate_scores(df_snapshot: pd.DataFrame, df_merged: pd.DataFrame) -> pd.DataFrame:
+    """Calcule signal_confidence_score, signal_divergence_count, trend_strength_composite"""
+    print("[SILVER/SNAPSHOT]   Calcul scores...")
+
+    # 1. signal_divergence_count
+    divergence_count = pd.Series(0, index=df_snapshot.index)
+
+    if 'dxy_strength' in df_merged.columns and 'close_return' in df_merged.columns:
+        dxy_strength = df_merged['dxy_strength'].fillna(0)
+        close_return = df_merged['close_return'].fillna(0)
+        divergence_count += ((dxy_strength > 0) & (close_return > 0)).astype(int)
+
+    if 'risk_on' in df_merged.columns and 'safe_haven' in df_merged.columns:
+        risk_on = df_merged['risk_on'].fillna(0)
+        safe_haven = df_merged['safe_haven'].fillna(0)
+        divergence_count += ((risk_on == 1) & (safe_haven == 1)).astype(int)
+
+    if 'inflation_pressure' in df_merged.columns and 'pib_change' in df_merged.columns:
+        inflation_pressure = df_merged['inflation_pressure'].fillna(0)
+        pib_change = df_merged['pib_change'].fillna(0)
+        divergence_count += ((inflation_pressure == 1) & (pib_change < 0)).astype(int)
+
+    df_snapshot['signal_divergence_count'] = divergence_count
+
+    # 2. signal_confidence_score
+    score = pd.Series(0.0, index=df_snapshot.index)
+
+    if 'macro_micro_aligned' in df_snapshot.columns:
+        score += (df_snapshot['macro_micro_aligned'] != 0).astype(float) * 0.3
+
+    if 'euro_strength_bias' in df_snapshot.columns:
+        score += (df_snapshot['euro_strength_bias'] != 0).astype(float) * 0.3
+
+    if 'volatility_4h' in df_merged.columns:
+        vol_threshold = df_merged['volatility_4h'].quantile(0.75)
+        score += (df_merged['volatility_4h'].fillna(999) < vol_threshold).astype(float) * 0.2
+
+    score += (df_snapshot['signal_divergence_count'] == 0).astype(float) * 0.2
+
+    df_snapshot['signal_confidence_score'] = score.clip(0, 1)
+
+    # 3. trend_strength_composite
+    if all(col in df_merged.columns for col in ['momentum_15m', 'momentum_1h', 'momentum_4h']):
+        mom_15m = df_merged['momentum_15m'].fillna(0)
+        mom_1h = df_merged['momentum_1h'].fillna(0)
+        mom_4h = df_merged['momentum_4h'].fillna(0)
+
+        df_snapshot['trend_strength_composite'] = (
+            0.2 * mom_15m + 0.3 * mom_1h + 0.5 * mom_4h
+        ).clip(-1, 1)
+    else:
+        df_snapshot['trend_strength_composite'] = 0.0
+
+    return df_snapshot
+
+
+def _calculate_event_window(df_snapshot: pd.DataFrame, df_merged: pd.DataFrame) -> pd.DataFrame:
+    """Calcule event_window_active"""
+    print("[SILVER/SNAPSHOT]   Calcul event windows...")
+
+    if 'event_impact_score' in df_merged.columns:
+        event_score = df_merged['event_impact_score'].fillna(0)
+        df_snapshot['event_window_active'] = (event_score > 0.7)
+    else:
+        df_snapshot['event_window_active'] = False
+
+    return df_snapshot

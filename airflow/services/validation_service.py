@@ -7,22 +7,28 @@ from datetime import datetime
 import requests
 
 
-def validate_data_quality(mt5_result: dict, yahoo_result: dict, docs_result: dict) -> dict:
+def validate_data_quality(mt5_result: dict, yahoo_result: dict, docs_result: dict, snapshot_result: dict) -> dict:
     """
-    Valide la qualité des données dans les 3 tables
+    Valide la qualité des données dans les 4 tables
 
     Args:
         mt5_result: Résultat load MT5 (table mt5_eurusd_m15)
         yahoo_result: Résultat load Yahoo (table yahoo_finance_daily)
         docs_result: Résultat load Documents (table documents_macro)
+        snapshot_result: Résultat load Market Snapshot (table market_snapshot_m15)
 
     Returns:
-        dict: Résultat validation avec errors/warnings
+        dict: Résultat validation (success/failed uniquement)
+
+    Note:
+        Validation simplifiée:
+        - Vérifie que le chargement a réussi (status = success)
+        - Vérifie qu'au moins 1 ligne a été chargée par table
+        - Pas de seuils de lignes (adapté au mode quotidien J-2→J-1)
     """
-    print("[VALIDATE] Validation des 3 tables...")
+    print("[VALIDATE] Validation des 4 tables...")
 
     errors = []
-    warnings = []
     tables_ok = 0
 
     # ========================================================================
@@ -38,8 +44,6 @@ def validate_data_quality(mt5_result: dict, yahoo_result: dict, docs_result: dic
 
         if mt5_rows == 0:
             errors.append("❌ Table MT5: Aucune ligne chargée")
-        elif mt5_rows < 1000:
-            warnings.append(f"⚠️ Table MT5: Peu de données ({mt5_rows} lignes, attendu >1000)")
         else:
             tables_ok += 1
             print(f"[VALIDATE]   ✓ Table MT5 OK")
@@ -57,8 +61,6 @@ def validate_data_quality(mt5_result: dict, yahoo_result: dict, docs_result: dic
 
         if yahoo_rows == 0:
             errors.append("❌ Table Yahoo: Aucune ligne chargée")
-        elif yahoo_rows < 100:
-            warnings.append(f"⚠️ Table Yahoo: Peu de données ({yahoo_rows} lignes, attendu >100)")
         else:
             tables_ok += 1
             print(f"[VALIDATE]   ✓ Table Yahoo OK")
@@ -66,7 +68,7 @@ def validate_data_quality(mt5_result: dict, yahoo_result: dict, docs_result: dic
     # ========================================================================
     # VALIDATION TABLE 3: DOCUMENTS
     # ========================================================================
-    print(f"[VALIDATE] Table 3/3: documents_macro")
+    print(f"[VALIDATE] Table 3/4: documents_macro")
 
     if docs_result.get("status") != "success":
         errors.append("❌ Table Documents: Échec du chargement")
@@ -76,43 +78,54 @@ def validate_data_quality(mt5_result: dict, yahoo_result: dict, docs_result: dic
 
         if docs_rows == 0:
             errors.append("❌ Table Documents: Aucune ligne chargée")
-        elif docs_rows < 10:
-            warnings.append(f"⚠️ Table Documents: Peu de données ({docs_rows} lignes, attendu >10)")
         else:
             tables_ok += 1
             print(f"[VALIDATE]   ✓ Table Documents OK")
+
+    # ========================================================================
+    # VALIDATION TABLE 4: MARKET SNAPSHOT
+    # ========================================================================
+    print(f"[VALIDATE] Table 4/4: market_snapshot_m15")
+
+    if snapshot_result.get("status") != "success":
+        errors.append("❌ Table Snapshot: Échec du chargement")
+    else:
+        snapshot_rows = snapshot_result.get("rows", 0)
+        print(f"[VALIDATE]   → {snapshot_rows} lignes chargées")
+
+        if snapshot_rows == 0:
+            errors.append("❌ Table Snapshot: Aucune ligne chargée")
+        else:
+            tables_ok += 1
+            print(f"[VALIDATE]   ✓ Table Snapshot OK")
 
     # ========================================================================
     # STATUT FINAL
     # ========================================================================
     if errors:
         status = "failed"
-        message = f"❌ Validation échouée: {len(errors)} erreur(s)"
+        message = f"❌ Pipeline échoué: {len(errors)} erreur(s)"
         emoji = "❌"
-    elif warnings:
-        status = "success_with_warnings"
-        message = f"⚠️ Pipeline réussi avec {len(warnings)} avertissement(s)"
-        emoji = "⚠️"
     else:
         status = "success"
-        message = "✅ Pipeline validé - Toutes les tables OK"
+        message = "✅ Pipeline réussi"
         emoji = "✅"
 
     print(f"[VALIDATE] {message}")
-    print(f"[VALIDATE] Tables OK: {tables_ok}/3")
+    print(f"[VALIDATE] Tables OK: {tables_ok}/4")
 
     return {
         "status": status,
         "message": message,
         "emoji": emoji,
         "errors": errors,
-        "warnings": warnings,
         "tables_ok": tables_ok,
-        "total_tables": 3,
+        "total_tables": 4,
         "mt5_rows": mt5_result.get("rows", 0),
         "yahoo_rows": yahoo_result.get("rows", 0),
         "docs_rows": docs_result.get("rows", 0),
-        "total_rows": mt5_result.get("rows", 0) + yahoo_result.get("rows", 0) + docs_result.get("rows", 0),
+        "snapshot_rows": snapshot_result.get("rows", 0),
+        "total_rows": mt5_result.get("rows", 0) + yahoo_result.get("rows", 0) + docs_result.get("rows", 0) + snapshot_result.get("rows", 0),
     }
 
 
@@ -139,30 +152,21 @@ def send_discord_notification(validation_result: dict, webhook_url: str) -> dict
     message = f"{emoji} **Pipeline ETL EURUSD v3.0 terminé**\n\n"
     message += f"**Statut:** {validation_result.get('message', 'Inconnu')}\n"
     message += f"**Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-    message += f"**Tables validées:** {validation_result.get('tables_ok', 0)}/3\n\n"
+    message += f"**Tables validées:** {validation_result.get('tables_ok', 0)}/4\n\n"
 
     # Données chargées
     message += "**📊 Données chargées:**\n"
     message += f"• Table MT5 (M15):         {validation_result.get('mt5_rows', 0):,} lignes\n"
     message += f"• Table Yahoo (Daily):     {validation_result.get('yahoo_rows', 0):,} lignes\n"
     message += f"• Table Documents (Var):   {validation_result.get('docs_rows', 0):,} lignes\n"
+    message += f"• Table Snapshot (M15):    {validation_result.get('snapshot_rows', 0):,} lignes\n"
     message += f"• **Total:**               {validation_result.get('total_rows', 0):,} lignes\n"
 
-    # Erreurs
+    # Erreurs seulement (pas de warnings)
     if validation_result.get("errors"):
         message += "\n**❌ Erreurs:**\n"
         for error in validation_result["errors"]:
             message += f"• {error}\n"
-
-    # Warnings
-    if validation_result.get("warnings"):
-        message += "\n**⚠️ Avertissements:**\n"
-        for warning in validation_result["warnings"]:
-            message += f"• {warning}\n"
-
-    # Footer
-    if status == "success":
-        message += "\n🎯 **Pipeline prêt pour export CSV**"
 
     # ========================================================================
     # ENVOI DISCORD

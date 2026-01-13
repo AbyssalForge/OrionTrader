@@ -7,7 +7,7 @@ from datetime import datetime
 import pandas as pd
 
 from utils.db_helper import get_db_session
-from models import MT5EURUSDM15, YahooFinanceDaily, DocumentsMacro
+from models import MT5EURUSDM15, YahooFinanceDaily, DocumentsMacro, MarketSnapshotM15
 
 
 # ============================================================================
@@ -232,6 +232,92 @@ def load_documents_to_db(documents_parquet: str, pipeline_run_id: str = None):
     except Exception as e:
         session.rollback()
         print(f"[GOLD/DOCS] ERREUR: {e}")
+        raise
+    finally:
+        session.close()
+
+
+# ============================================================================
+# LOAD 4/4 - MARKET SNAPSHOT
+# ============================================================================
+
+def load_market_snapshot_to_db(snapshot_parquet: str, pipeline_run_id: str = None):
+    """
+    Charge le market snapshot vers la table market_snapshot_m15
+
+    Args:
+        snapshot_parquet: Chemin du fichier .parquet Market Snapshot
+        pipeline_run_id: ID du run pipeline
+
+    Returns:
+        dict: Résultat avec status, rows
+    """
+    print(f"[GOLD/SNAPSHOT] Chargement Market Snapshot depuis {snapshot_parquet}...")
+
+    df = pd.read_parquet(snapshot_parquet)
+
+    if df.index.name == 'time':
+        df = df.reset_index()
+
+    df['time'] = pd.to_datetime(df['time'], utc=True)
+    df['mt5_time'] = pd.to_datetime(df['mt5_time'], utc=True)
+    df['yahoo_time'] = pd.to_datetime(df['yahoo_time'], utc=True)
+    df['docs_time'] = pd.to_datetime(df['docs_time'], utc=True)
+
+    session = get_db_session()
+    if not pipeline_run_id:
+        pipeline_run_id = datetime.now().isoformat()
+
+    try:
+        inserted = 0
+        for _, row in df.iterrows():
+            # Conversion NaN -> None pour colonnes optionnelles
+            def safe_get(key, default=None):
+                val = row.get(key, default)
+                if pd.isna(val):
+                    return default
+                return val
+
+            record = MarketSnapshotM15(
+                time=row['time'],
+                mt5_time=row['mt5_time'],
+                yahoo_time=safe_get('yahoo_time'),
+                docs_time=safe_get('docs_time'),
+                # Features composites
+                macro_micro_aligned=safe_get('macro_micro_aligned', 0),
+                euro_strength_bias=safe_get('euro_strength_bias', 0),
+                # Régimes
+                regime_composite=safe_get('regime_composite', 'neutral'),
+                volatility_regime=safe_get('volatility_regime', 'normal'),
+                # Scores
+                signal_confidence_score=safe_get('signal_confidence_score', 0.0),
+                signal_divergence_count=safe_get('signal_divergence_count', 0),
+                trend_strength_composite=safe_get('trend_strength_composite', 0.0),
+                # Event
+                event_window_active=safe_get('event_window_active', False),
+                # Metadata
+                pipeline_run_id=pipeline_run_id
+            )
+            session.merge(record)
+            inserted += 1
+
+            if inserted % 5000 == 0:
+                session.commit()
+                print(f"[GOLD/SNAPSHOT]   {inserted} lignes...")
+
+        session.commit()
+        print(f"[GOLD/SNAPSHOT] OK: {inserted} lignes chargées")
+
+        return {
+            'status': 'success',
+            'table': 'market_snapshot_m15',
+            'rows': inserted,
+            'pipeline_run_id': pipeline_run_id
+        }
+
+    except Exception as e:
+        session.rollback()
+        print(f"[GOLD/SNAPSHOT] ERREUR: {e}")
         raise
     finally:
         session.close()

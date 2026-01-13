@@ -7,7 +7,7 @@ from .bdd_service import initialize_database
 
 from .bronze_service import (
     extract_mt5_data,
-    extract_stooq_data,
+    extract_yahoo_data,
     extract_eurostat_data
 )
 
@@ -32,7 +32,7 @@ __all__ = [
     # Bronze - Extract (→ .parquet staging)
     'initialize_database',
     'extract_mt5_data',
-    'extract_stooq_data',
+    'extract_yahoo_data',
     'extract_eurostat_data',
     # Silver - Transform (.parquet → .parquet features)
     'transform_mt5_features',

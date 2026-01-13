@@ -16,6 +16,7 @@ from .base import (
 from .MT5EURUSDM15 import MT5EURUSDM15
 from .YahooFinanceDaily import YahooFinanceDaily
 from .DocumentsMacro import DocumentsMacro
+from .MarketSnapshotM15 import MarketSnapshotM15
 
 __all__ = [
     # Base
@@ -25,12 +26,9 @@ __all__ = [
     'create_all_tables',
     'drop_all_tables',
 
-    # Architecture v3.0 - 4 tables séparées par source
+    # Architecture v3.0 - 4 tables séparées par source + composites
     'MT5EURUSDM15',           # Table 1: MT5 local (M15)
     'YahooFinanceDaily',      # Table 2: Yahoo Finance API (Daily)
     'DocumentsMacro',         # Table 3: Documents économiques (Monthly/Annual)
-    'FeaturesComposites',     # Table 4: Features composites (cross-source)
-
-    # Legacy v2.0 - Table unifiée (backup)
-    'FeaturesEURUSDM15',
+    'MarketSnapshotM15',      # Table 4: Market snapshot avec features composites
 ]
