@@ -1,0 +1,6 @@
+{
+  "URL_oecd_eurozonne": "https://stats.oecd.org/sdmx-json/data",
+  "URL_worldbank_eurozone_gdp": "https://api.worldbank.org/v2/country",
+  "URL_ecb_eurozone_cpi": "https://data-api.ecb.europa.eu/service/data/ICP/M.U2.N.000000.4.ANR",
+  "URL_investing_economic_calendar": "https://www.investing.com/economic-calendar/"
+}

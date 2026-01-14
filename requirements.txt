@@ -1,0 +1,76 @@
+# --- Core ---
+python-dotenv
+
+# --- API Server ---
+fastapi
+uvicorn
+pydantic
+requests
+Pyro5
+hvac
+pyarrow
+
+# --- Machine Learning / Reinforcement Learning ---
+# stable-baselines3
+# gymnasium
+# torch
+# numpy
+# pandas
+
+# --- Data Visualization & Debugging ---
+# matplotlib
+# seaborn
+# tensorboard
+
+# --- MetaTrader 5 Bridge ---
+MetaTrader5
+# (Assure-toi que le terminal MT5 est installé et configuré sur la machine d’exécution)
+
+# --- Optionnels / Utils ---
+# scikit-learn
+# plotly
+# tqdm
+# loguru
+
+# --- Docker / Deployment (si besoin) ---
+httpx
+
+# ray[rllib]
+# ipywidgets
+
+# stable-baselines3 
+numpy 
+pandas 
+# matplotlib 
+# tensorboard 
+# yfinance
+# optuna
+
+
+# wandb 
+# alibi-detect
+
+# nbformat
+
+# evidently
+
+# langchain-core==0.3.12
+# langchain==0.3.7
+# langgraph==0.2.33
+
+# finrl
+# prefect
+# watchfiles
+
+# exchange-calendars
+# stockstats
+# wrds
+
+# alpaca_trade_api
+# websockets==10.4
+
+# mlflow
+
+# xgboost==1.7.6
+
+# apache-airflow
