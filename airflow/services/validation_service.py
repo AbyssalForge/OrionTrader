@@ -149,7 +149,7 @@ def send_discord_notification(validation_result: dict, webhook_url: str) -> dict
     status = validation_result.get("status", "unknown")
 
     # Header
-    message = f"{emoji} **Pipeline ETL EURUSD v3.0 terminé**\n\n"
+    message = f"{emoji} **Pipeline ETL EURUSD terminé**\n\n"
     message += f"**Statut:** {validation_result.get('message', 'Inconnu')}\n"
     message += f"**Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
     message += f"**Tables validées:** {validation_result.get('tables_ok', 0)}/4\n\n"

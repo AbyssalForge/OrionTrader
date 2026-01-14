@@ -12,9 +12,9 @@ START = pd.Timestamp("2023-01-01")
 END = pd.Timestamp("2025-11-01")
 PARQUET_PATH = f"data/{SYMBOL.lower()}_{TIMEFRAME}.parquet"
 
-MT5_LOGIN = int(vault.get_secret('MetaTrader', 'MT5_LOGIN'))
-MT5_PASSWORD = vault.get_secret('MetaTrader', 'MT5_PASSWORD')
-MT5_SERVER = vault.get_secret('MetaTrader', 'MT5_SERVER')
+MT5_LOGIN = int(vault.get_secret('Meta_trader', 'MT5_LOGIN'))
+MT5_PASSWORD = vault.get_secret('Meta_trader', 'MT5_PASSWORD')
+MT5_SERVER = vault.get_secret('Meta_trader', 'MT5_SERVER')
 
 
 def connect_mt5(max_retries=3, wait_time=2):

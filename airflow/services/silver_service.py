@@ -351,15 +351,18 @@ def transform_market_snapshot(
         direction='backward'
     )
 
-    df_merged = df_merged.set_index('time')
-
-    # Créer DataFrame snapshot
-    df_snapshot = pd.DataFrame(index=df_merged.index)
+    # Créer DataFrame snapshot (garder time comme colonne pour l'instant)
+    df_snapshot = pd.DataFrame()
 
     # ===== FOREIGN KEYS =====
-    df_snapshot['mt5_time'] = df_merged.index  # FK vers MT5 (toujours présent)
+    df_snapshot['time'] = df_merged['time']  # PK du snapshot (= timestamp M15)
+    df_snapshot['mt5_time'] = df_merged['time']  # FK vers MT5 (même que time)
     df_snapshot['yahoo_time'] = df_merged['yahoo_time']  # FK vers Yahoo (backward fill)
     df_snapshot['docs_time'] = df_merged['docs_time']  # FK vers Documents (backward fill)
+
+    # Set index pour les deux DataFrames (important pour alignement lors des calculs)
+    df_snapshot = df_snapshot.set_index('time')
+    df_merged = df_merged.set_index('time')
 
     # ===== FEATURES COMPOSITES MULTI-SOURCES =====
     df_snapshot = _calculate_composite_features(df_snapshot, df_merged)
