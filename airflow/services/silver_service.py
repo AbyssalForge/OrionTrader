@@ -40,9 +40,15 @@ def transform_mt5_features(mt5_parquet: str) -> str:
     # Feature engineering MT5
     df = _add_mt5_features(df)
 
-    # Nettoyage
+    # Nettoyage intelligent (ne forward-fill QUE les colonnes de prix)
     df = df.dropna(subset=['close', 'open', 'high', 'low'])
-    df = df.ffill()
+
+    # Forward-fill uniquement les colonnes exogènes (OHLC + tick_volume)
+    price_cols = ['open', 'high', 'low', 'close', 'tick_volume']
+    df[price_cols] = df[price_cols].ffill()
+
+    # Les features dérivées ne sont PAS forward-fillées pour éviter le lissage artificiel
+    # Elles gardent leurs NaN naturels qui seront gérés plus tard
 
     # Sauvegarde
     output_path = "data/processed/mt5_features.parquet"
@@ -129,6 +135,10 @@ def transform_yahoo_features(yahoo_parquets: dict) -> str:
     print(f"[SILVER/YAHOO]   Shape brute: {df.shape}")
     print(f"[SILVER/YAHOO]   Période: {df.index.min()} -> {df.index.max()}")
     print(f"[SILVER/YAHOO]   Actifs mergés: {len(dfs)}")
+
+    # Ajouter flag de disponibilité des données (AVANT ffill/fillna)
+    # Permet de savoir si fillna(0) est une vraie valeur ou un fallback
+    df['yahoo_data_available'] = df.notna().any(axis=1).astype(int)
 
     # Feature engineering Yahoo
     df = _add_yahoo_features(df)
@@ -251,13 +261,14 @@ def _add_pib_features(df: pd.DataFrame) -> pd.DataFrame:
         df['pib_change'] = df['eurozone_pib'].pct_change()
         df['pib_growth'] = df['pib_change'].diff()
 
-    # Colonnes CPI et Events à None pour compatibilité
-    df['eurozone_cpi'] = None
-    df['cpi_change'] = None
-    df['inflation_pressure'] = None
-    df['event_title'] = None
-    df['event_impact'] = None
-    df['event_impact_score'] = None
+    # Colonnes CPI et Events à np.nan pour compatibilité (pas None!)
+    # np.nan force un dtype numérique, compatible avec ML
+    df['eurozone_cpi'] = np.nan
+    df['cpi_change'] = np.nan
+    df['inflation_pressure'] = np.nan
+    df['event_title'] = np.nan
+    df['event_impact'] = np.nan
+    df['event_impact_score'] = np.nan
 
     return df
 
@@ -268,13 +279,13 @@ def _add_cpi_features(df: pd.DataFrame) -> pd.DataFrame:
         df['cpi_change'] = df['eurozone_cpi'].pct_change()
         df['inflation_pressure'] = (df['cpi_change'] > 0.02).astype(int)
 
-    # Colonnes PIB et Events à None pour compatibilité
-    df['eurozone_pib'] = None
-    df['pib_change'] = None
-    df['pib_growth'] = None
-    df['event_title'] = None
-    df['event_impact'] = None
-    df['event_impact_score'] = None
+    # Colonnes PIB et Events à np.nan pour compatibilité (pas None!)
+    df['eurozone_pib'] = np.nan
+    df['pib_change'] = np.nan
+    df['pib_growth'] = np.nan
+    df['event_title'] = np.nan
+    df['event_impact'] = np.nan
+    df['event_impact_score'] = np.nan
 
     return df
 
@@ -286,13 +297,13 @@ def _add_event_features(df: pd.DataFrame) -> pd.DataFrame:
         impact_map = {'high': 1.0, 'medium': 0.5, 'low': 0.1}
         df['event_impact_score'] = df['event_impact'].map(impact_map).fillna(0.0)
 
-    # Colonnes PIB et CPI à None pour compatibilité
-    df['eurozone_pib'] = None
-    df['pib_change'] = None
-    df['pib_growth'] = None
-    df['eurozone_cpi'] = None
-    df['cpi_change'] = None
-    df['inflation_pressure'] = None
+    # Colonnes PIB et CPI à np.nan pour compatibilité (pas None!)
+    df['eurozone_pib'] = np.nan
+    df['pib_change'] = np.nan
+    df['pib_growth'] = np.nan
+    df['eurozone_cpi'] = np.nan
+    df['cpi_change'] = np.nan
+    df['inflation_pressure'] = np.nan
 
     return df
 
