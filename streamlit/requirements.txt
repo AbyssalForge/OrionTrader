@@ -1,0 +1,24 @@
+# Streamlit
+streamlit==1.40.2
+
+# Database
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+
+# Data manipulation
+pandas==2.2.3
+numpy==2.2.1
+
+# Visualization
+plotly==5.24.1
+altair==5.5.0
+
+# API client
+requests==2.32.3
+
+# Vault client
+hvac==2.3.0
+
+# Utils
+python-dateutil==2.9.0.post0
+pytz==2024.2

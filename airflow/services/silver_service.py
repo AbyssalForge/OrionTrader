@@ -393,9 +393,12 @@ def _calculate_composite_features(df_snapshot: pd.DataFrame, df_merged: pd.DataF
     print("[SILVER/SNAPSHOT]   Calcul features composites...")
 
     # 1. macro_micro_aligned (DXY vs EUR/USD)
+    # IMPORTANT: Utiliser shift(1) pour éviter le leakage temporel
+    # Le close_return à t contient une info sur le mouvement actuel,
+    # or le label est basé sur le futur (t+n). On utilise donc t-1.
     if 'dxy_trend_1h' in df_merged.columns and 'close_return' in df_merged.columns:
         dxy_trend = df_merged['dxy_trend_1h'].fillna(0)
-        eur_return = df_merged['close_return'].fillna(0)
+        eur_return = df_merged['close_return'].shift(1).fillna(0)
 
         df_snapshot['macro_micro_aligned'] = np.where(
             (dxy_trend < 0) & (eur_return > 0), 1,
@@ -459,9 +462,10 @@ def _calculate_scores(df_snapshot: pd.DataFrame, df_merged: pd.DataFrame) -> pd.
     # 1. signal_divergence_count
     divergence_count = pd.Series(0, index=df_snapshot.index)
 
+    # IMPORTANT: Utiliser shift(1) sur close_return pour éviter le leakage temporel
     if 'dxy_strength' in df_merged.columns and 'close_return' in df_merged.columns:
         dxy_strength = df_merged['dxy_strength'].fillna(0)
-        close_return = df_merged['close_return'].fillna(0)
+        close_return = df_merged['close_return'].shift(1).fillna(0)
         divergence_count += ((dxy_strength > 0) & (close_return > 0)).astype(int)
 
     if 'risk_on' in df_merged.columns and 'safe_haven' in df_merged.columns:

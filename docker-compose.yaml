@@ -229,6 +229,53 @@ services:
       - IPC_LOCK
     entrypoint: ["/bin/sh", "/vault/entrypoint.sh"]
 
+  marimo:
+    build: ./marimo
+    container_name: orion_marimo
+    depends_on:
+      postgres:
+        condition: service_healthy
+      vault:
+        condition: service_started
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
+    volumes:
+      - ./marimo/notebooks:/app/notebooks:rw  # Hot-reload notebooks
+    ports:
+      - "2718:2718"
+    networks:
+      - oriontrader_network
+    restart: unless-stopped
+
+  streamlit:
+    build: ./streamlit
+    container_name: orion_streamlit
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database connection
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Vault
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
+      # FastAPI endpoint
+      FASTAPI_URL: http://fastapi:8000
+    volumes:
+      - ./streamlit:/app:rw  # Hot-reload sur modification code
+      - ./airflow/models:/opt/airflow/models:ro  # Accès aux models SQLAlchemy
+    ports:
+      - "8501:8501"
+    networks:
+      - oriontrader_network
+    restart: always
+    command: streamlit run app.py --server.address=0.0.0.0 --server.port=8501 --server.fileWatcherType=poll
+
 networks:
   oriontrader_network:
     driver: bridge
