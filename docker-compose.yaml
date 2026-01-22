@@ -14,16 +14,26 @@ services:
     image: postgres:15
     container_name: orion_postgres
     environment:
+      # Superuser et base principale de trading
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB:-trading_data}
       POSTGRES_HOST_AUTH_METHOD: md5
+      # Airflow
       AIRFLOW_DB_NAME: ${AIRFLOW_DB_NAME}
       AIRFLOW_DB_USER: ${AIRFLOW_DB_USER}
       AIRFLOW_DB_PASSWORD: ${AIRFLOW_DB_PASSWORD}
+      # MLflow
       MLFLOW_DB_NAME: ${MLFLOW_DB_NAME}
       MLFLOW_DB_USER: ${MLFLOW_DB_USER}
       MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD}
+      # FastAPI (auth)
+      FASTAPI_DB_NAME: ${FASTAPI_DB_NAME:-fastapi}
+      FASTAPI_DB_USER: ${FASTAPI_DB_USER:-fastapi}
+      FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}
+      # Streamlit (read-only)
+      STREAMLIT_DB_USER: ${STREAMLIT_DB_USER:-streamlit}
+      STREAMLIT_DB_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
       - ./docker-init/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
@@ -55,6 +65,11 @@ services:
       MLFLOW_DB_NAME: ${MLFLOW_DB_NAME}
       MLFLOW_DB_USER: ${MLFLOW_DB_USER}
       MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD}
+      FASTAPI_DB_NAME: ${FASTAPI_DB_NAME:-fastapi}
+      FASTAPI_DB_USER: ${FASTAPI_DB_USER:-fastapi}
+      FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}
+      STREAMLIT_DB_USER: ${STREAMLIT_DB_USER:-streamlit}
+      STREAMLIT_DB_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
     volumes:
       - ./docker-init/init-postgres.sh:/init-postgres.sh
     command: bash /init-postgres.sh
@@ -70,14 +85,23 @@ services:
       dockerfile: Dockerfile
     container_name: orion_mlflow
     working_dir: /mlflow
+    environment:
+      MLFLOW_HOST: "*"
     volumes:
       - ./mlflow/mlruns:/mlflow/mlruns
-    command: >
-      mlflow server
-      --backend-store-uri postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@postgres:5432/${MLFLOW_DB_NAME}
-      --default-artifact-root /mlflow/mlruns
-      --host 0.0.0.0
-      --port 5000
+    command:
+      - mlflow
+      - server
+      - --backend-store-uri
+      - postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@postgres:5432/${MLFLOW_DB_NAME}
+      - --default-artifact-root
+      - file:///mlflow/mlruns
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+      - --allowed-hosts
+      - "*"
     ports:
       - "5000:5000"
     depends_on:
@@ -145,9 +169,18 @@ services:
       # Optional: MLFlow et Vault
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
+      # FastAPI Auth Database
+      FASTAPI_DB_HOST: postgres
+      FASTAPI_DB_PORT: 5432
+      FASTAPI_DB_NAME: ${FASTAPI_DB_NAME:-fastapi}
+      FASTAPI_DB_USER: ${FASTAPI_DB_USER:-fastapi}
+      FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}
+      # Master API Token (from .env)
+      FASTAPI_MASTER_TOKEN: ${FASTAPI_MASTER_TOKEN}
     volumes:
       - ./fastapi:/app:rw  # Mount code pour hot-reload en dev
       - ./airflow:/opt/airflow:ro  # Access aux models
+      - ./mlflow/mlruns:/mlflow/mlruns:rw  # Access aux artifacts MLflow
     ports:
       - "8000:8000"
     networks:
@@ -171,6 +204,7 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: ""
     ports:
       - "3000:3000"
     networks:
@@ -180,6 +214,9 @@ services:
     restart: always
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
 
   pushgateway:
     image: prom/pushgateway:latest
@@ -242,6 +279,7 @@ services:
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
     volumes:
       - ./marimo/notebooks:/app/notebooks:rw  # Hot-reload notebooks
+      - ./mlflow/mlruns:/mlflow/mlruns:rw  # Partage artifacts MLflow
     ports:
       - "2718:2718"
     networks:
@@ -255,17 +293,19 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      # Database connection
+      # Database connection (read-only user)
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-trading_data}
+      POSTGRES_USER: ${STREAMLIT_DB_USER:-streamlit}
+      POSTGRES_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
       # Vault
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
       # FastAPI endpoint
       FASTAPI_URL: http://fastapi:8000
+      # FastAPI Authentication Token
+      FASTAPI_API_TOKEN: ${FASTAPI_API_TOKEN}
     volumes:
       - ./streamlit:/app:rw  # Hot-reload sur modification code
       - ./airflow/models:/opt/airflow/models:ro  # Accès aux models SQLAlchemy

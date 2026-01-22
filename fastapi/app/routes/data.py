@@ -13,6 +13,8 @@ from models import MT5EURUSDM15, YahooFinanceDaily, DocumentsMacro, MarketSnapsh
 
 # Imports depuis la nouvelle structure modulaire
 from app.core.dependencies import get_db
+from app.core.auth import verify_api_token
+from app.models.api_token import APIToken
 from app.schemas.data import (
     YahooFinanceResponse,
     DocumentsMacroResponse,
@@ -33,7 +35,8 @@ def get_mt5_features(
     end_date: Optional[datetime] = Query(None, description="Date de fin"),
     limit: int = Query(1000, ge=1, le=100000, description="Nombre max de résultats"),
     offset: int = Query(0, ge=0, description="Offset pour pagination"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     🎯 Features microstructure MT5 (M15)
@@ -78,7 +81,8 @@ def get_yahoo_features(
     end_date: Optional[datetime] = Query(None, description="Date de fin"),
     limit: int = Query(1000, ge=1, le=10000, description="Nombre max de résultats"),
     offset: int = Query(0, ge=0, description="Offset pour pagination"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     🌍 Features macro-financières Yahoo Finance (Daily)
@@ -123,7 +127,8 @@ def get_macro_features(
     end_date: Optional[datetime] = Query(None, description="Date de fin"),
     limit: int = Query(1000, ge=1, le=10000, description="Nombre max de résultats"),
     offset: int = Query(0, ge=0, description="Offset pour pagination"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     📈 Features macro-économiques (Documents)
@@ -168,7 +173,8 @@ def get_training_data(
     end_date: Optional[datetime] = Query(None, description="Date de fin"),
     limit: int = Query(1000, ge=1, le=100000, description="Nombre max de résultats"),
     offset: int = Query(0, ge=0, description="Offset pour pagination"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     🤖 Dataset complet pour entraînement ML
@@ -301,7 +307,10 @@ def get_training_data(
 # ============================================================================
 
 @router.get("/stats")
-def get_data_stats(db: Session = Depends(get_db)):
+def get_data_stats(
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
+):
     """
     📊 Statistiques des données disponibles
 
@@ -370,7 +379,10 @@ def get_data_stats(db: Session = Depends(get_db)):
 # ============================================================================
 
 @router.get("/features/latest")
-def get_latest_features(db: Session = Depends(get_db)):
+def get_latest_features(
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
+):
     """
     🎯 Dernières features disponibles par source
 

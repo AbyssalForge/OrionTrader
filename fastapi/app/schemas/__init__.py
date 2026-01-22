@@ -6,6 +6,15 @@ from .common import HealthResponse, PipelineStatsResponse, RegimeDistributionRes
 from .market import MT5Response, MarketSnapshotResponse
 from .data import YahooFinanceResponse, DocumentsMacroResponse, TrainingDataResponse
 from .signals import HighConfidenceSignalResponse
+from .model import (
+    SimplePredictionRequest,
+    PredictionRequest,
+    BatchPredictionRequest,
+    PredictionResponse,
+    BatchPredictionResponse,
+    ModelInfo,
+    ModelMetrics
+)
 
 __all__ = [
     # Common
@@ -21,4 +30,12 @@ __all__ = [
     "TrainingDataResponse",
     # Signals
     "HighConfidenceSignalResponse",
+    # Model
+    "SimplePredictionRequest",
+    "PredictionRequest",
+    "BatchPredictionRequest",
+    "PredictionResponse",
+    "BatchPredictionResponse",
+    "ModelInfo",
+    "ModelMetrics",
 ]

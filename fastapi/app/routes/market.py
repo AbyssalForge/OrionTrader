@@ -13,6 +13,8 @@ from models import MT5EURUSDM15, MarketSnapshotM15
 
 # Imports depuis la nouvelle structure modulaire
 from app.core.dependencies import get_db
+from app.core.auth import verify_api_token
+from app.models.api_token import APIToken
 from app.schemas.market import (
     MT5Response,
     MarketSnapshotResponse,
@@ -27,7 +29,10 @@ router = APIRouter()
 # ============================================================================
 
 @router.get("/latest", response_model=MarketSnapshotResponse)
-def get_latest_market_snapshot(db: Session = Depends(get_db)):
+def get_latest_market_snapshot(
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
+):
     """
     📊 Récupère le dernier snapshot de marché disponible
 
@@ -57,7 +62,8 @@ def get_mt5_ohlcv(
     end_date: Optional[datetime] = Query(None, description="Date de fin (ISO format)"),
     limit: int = Query(100, ge=1, le=10000, description="Nombre max de résultats"),
     offset: int = Query(0, ge=0, description="Offset pour pagination"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     📈 Récupère les données OHLCV MT5 (M15)
@@ -107,7 +113,8 @@ def get_market_snapshots(
     min_confidence: Optional[float] = Query(None, ge=0.0, le=1.0, description="Score de confiance minimum"),
     limit: int = Query(100, ge=1, le=10000, description="Nombre max de résultats"),
     offset: int = Query(0, ge=0, description="Offset pour pagination"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     📊 Récupère l'historique des snapshots de marché avec filtres
@@ -157,7 +164,8 @@ def get_market_snapshots(
 def get_regime_distribution(
     start_date: Optional[datetime] = Query(None, description="Date de début"),
     end_date: Optional[datetime] = Query(None, description="Date de fin"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     📊 Distribution des régimes de marché
@@ -210,7 +218,10 @@ def get_regime_distribution(
 # ============================================================================
 
 @router.get("/ohlcv/latest", response_model=MT5Response)
-def get_latest_ohlcv(db: Session = Depends(get_db)):
+def get_latest_ohlcv(
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
+):
     """
     📈 Dernier prix OHLCV disponible
 
@@ -234,7 +245,8 @@ def get_latest_ohlcv(db: Session = Depends(get_db)):
 def get_market_stats(
     start_date: Optional[datetime] = Query(None, description="Date de début"),
     end_date: Optional[datetime] = Query(None, description="Date de fin"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     📊 Statistiques de marché agrégées

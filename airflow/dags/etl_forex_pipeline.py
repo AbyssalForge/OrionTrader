@@ -42,7 +42,38 @@ from services.validation_service import (
     send_discord_notification
 )
 
-DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1447910339155988564/ybAszOuZF9HpV2djOQb_NtNSI_lgRL1swgQhmgB6jsfj9G5OMEstRP_U4rxobcfbspwJ"
+from clients.vault_helper import get_vault
+
+
+def send_notification(validation_result: dict) -> dict:
+    """
+    Envoie une notification si DISCORD_WEBHOOK est configuré dans Vault.
+
+    Cherche dans Vault: secret/airflow_notification -> DISCORD_WEBHOOK
+    Si trouvé: envoie la notification Discord
+    Sinon: skip silencieusement
+
+    Returns:
+        dict avec status de la notification
+    """
+    try:
+        vault = get_vault()
+        webhook_discord_url = vault.get_secret('Airflow_notification', 'DISCORD_WEBHOOK')
+
+        if webhook_discord_url:
+            print("[NOTIFY] DISCORD_WEBHOOK trouvé dans Vault, envoi notification...")
+            return send_discord_notification(
+                validation_result=validation_result,
+                webhook_url=webhook_discord_url
+            )
+        else:
+            print("[NOTIFY] DISCORD_WEBHOOK vide dans Vault, notification ignorée")
+            return {"status": "skipped", "reason": "DISCORD_WEBHOOK is empty"}
+
+    except Exception as e:
+        # Si le secret n'existe pas ou erreur Vault, on skip silencieusement
+        print(f"[NOTIFY] Pas de DISCORD_WEBHOOK configuré dans Vault ({e}), notification ignorée")
+        return {"status": "skipped", "reason": str(e)}
 
 # Dates par défaut (peuvent être écrasées lors du lancement manuel)
 # Ces valeurs seront utilisées si aucun paramètre n'est fourni
@@ -225,15 +256,12 @@ def etl_forex():
 
     @task
     def notify(validation_result: dict):
-        """Notification: Envoyer résumé sur Discord"""
+        """Notification: Envoyer résumé sur Discord (si configuré dans Vault)"""
         print("[NOTIFY] ==================== NOTIFICATION ====================")
 
-        notification_result = send_discord_notification(
-            validation_result=validation_result,
-            webhook_url=DISCORD_WEBHOOK
-        )
+        notification_result = send_notification(validation_result)
 
-        print(f"[NOTIFY] Discord notification: {notification_result.get('status')}")
+        print(f"[NOTIFY] Notification status: {notification_result.get('status')}")
         print("[NOTIFY] ==================== FIN ====================")
 
         return notification_result

@@ -12,11 +12,13 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import datetime
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.config import settings
 from app.core import get_db
 from app.core.database import test_connection, get_table_counts
-from app.routes import market, data, signals
+from app.core.auth_database import test_auth_connection, init_auth_tables
+from app.routes import market, data, signals, model, auth
 
 
 # ============================================================================
@@ -60,14 +62,22 @@ app = FastAPI(
 - `GET /signals/event-window` - Signaux pendant fenêtres d'événements macro
 - `GET /signals/stats` - Statistiques et distribution des signaux
 
+### 🤖 ML Model (5 endpoints)
+- `POST /model/predict` - Prédiction unique (SHORT/NEUTRAL/LONG)
+- `POST /model/predict/batch` - Prédictions en batch pour backtesting
+- `GET /model/info` - Informations sur le modèle chargé
+- `GET /model/metrics` - Métriques d'entraînement du modèle
+- `POST /model/reload` - Recharge le modèle (après mise à jour)
+
 ## 💡 Use cases
 
 - **📈 Trading automatique**: Utiliser `/signals/high-confidence` pour décisions automatiques
-- **📊 Backtesting**: Dataset complet via `/data/training` avec toutes les features
-- **🤖 Machine Learning**: Features séparées via `/data/features/*` pour entraînement
+- **🤖 Prédictions ML en temps réel**: `/model/predict` pour obtenir des prédictions SHORT/NEUTRAL/LONG
+- **📊 Backtesting**: Dataset complet via `/data/training` + prédictions batch via `/model/predict/batch`
+- **🧠 Machine Learning**: Features séparées via `/data/features/*` pour entraînement
 - **📉 Analyse technique**: OHLCV haute fréquence via `/market/ohlcv/m15`
 - **🌍 Analyse macro**: Données économiques via `/data/features/macro`
-- **🎯 Monitoring**: Health check via `/health` et statistiques via `*/stats`
+- **🎯 Monitoring**: Health check via `/health`, métriques modèle via `/model/metrics`
 
 ## 🔑 Paramètres principaux
 
@@ -96,12 +106,22 @@ app.add_middleware(
 
 
 # ============================================================================
+# PROMETHEUS METRICS
+# ============================================================================
+
+# Instrumenter l'application FastAPI avec Prometheus
+Instrumentator().instrument(app).expose(app)
+
+
+# ============================================================================
 # INCLUDE ROUTERS
 # ============================================================================
 
+app.include_router(auth.router, prefix="/auth", tags=["🔐 Authentication"])
 app.include_router(market.router, prefix="/market", tags=["Market"])
 app.include_router(data.router, prefix="/data", tags=["Data & Features"])
 app.include_router(signals.router, prefix="/signals", tags=["Trading Signals"])
+app.include_router(model.router, prefix="/model", tags=["ML Model"])
 
 
 # ============================================================================
@@ -165,12 +185,25 @@ async def startup_event():
     print(f"[INFO] Environment: {settings.ENVIRONMENT}")
     print("=" * 70)
 
-    # Test connexion DB
+    # Test connexion DB principale (trading data)
     if test_connection():
-        print("[OK] Database connection: OK")
+        print("[OK] Trading Database connection: OK")
     else:
-        print("[ERROR] Database connection: FAILED")
-        print("[WARNING] API will start but endpoints will fail")
+        print("[ERROR] Trading Database connection: FAILED")
+        print("[WARNING] API will start but data endpoints will fail")
+
+    # Test connexion DB auth (tokens)
+    if test_auth_connection():
+        print("[OK] Auth Database connection: OK")
+        # Créer les tables d'authentification si elles n'existent pas
+        try:
+            init_auth_tables()
+            print("[OK] Auth tables initialized")
+        except Exception as e:
+            print(f"[WARNING] Auth tables init failed: {e}")
+    else:
+        print("[ERROR] Auth Database connection: FAILED")
+        print("[WARNING] Authentication will not work properly")
 
     print("=" * 70)
     print("[INFO] Documentation available at: http://localhost:8000/docs")

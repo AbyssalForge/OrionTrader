@@ -13,6 +13,8 @@ from models import MT5EURUSDM15, MarketSnapshotM15
 
 # Imports depuis la nouvelle structure modulaire
 from app.core.dependencies import get_db
+from app.core.auth import verify_api_token
+from app.models.api_token import APIToken
 from app.schemas.signals import HighConfidenceSignalResponse
 
 router = APIRouter()
@@ -32,7 +34,8 @@ def get_high_confidence_signals(
     end_date: Optional[datetime] = Query(None, description="Date de fin"),
     limit: int = Query(100, ge=1, le=1000, description="Nombre max de résultats"),
     offset: int = Query(0, ge=0, description="Offset pour pagination"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     🎯 Signaux de trading haute confiance
@@ -133,7 +136,8 @@ def get_best_signals(
     top_n: int = Query(10, ge=1, le=100, description="Nombre de meilleurs signaux à retourner"),
     start_date: Optional[datetime] = Query(None, description="Date de début"),
     end_date: Optional[datetime] = Query(None, description="Date de fin"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     🏆 Meilleurs signaux (Top N)
@@ -209,7 +213,8 @@ def get_strong_trend_signals(
     direction: Optional[str] = Query(None, description="Direction: 'bullish' ou 'bearish'"),
     limit: int = Query(100, ge=1, le=1000, description="Nombre max de résultats"),
     offset: int = Query(0, ge=0, description="Offset pour pagination"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     📈📉 Signaux avec forte tendance
@@ -301,7 +306,8 @@ def get_event_window_signals(
     min_confidence: float = Query(0.6, ge=0.0, le=1.0, description="Score de confiance minimum"),
     limit: int = Query(100, ge=1, le=1000, description="Nombre max de résultats"),
     offset: int = Query(0, ge=0, description="Offset pour pagination"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     📅 Signaux pendant fenêtres d'événements importants
@@ -372,7 +378,8 @@ def get_event_window_signals(
 def get_signal_stats(
     start_date: Optional[datetime] = Query(None, description="Date de début"),
     end_date: Optional[datetime] = Query(None, description="Date de fin"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: APIToken = Depends(verify_api_token)
 ):
     """
     📊 Statistiques des signaux

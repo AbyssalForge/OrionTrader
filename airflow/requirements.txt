@@ -10,16 +10,23 @@ feedparser
 sqlalchemy
 psycopg2-binary
 msgpack
+
+# ML Training dependencies
+numpy
+matplotlib
+seaborn
+scikit-learn
+lightgbm
+xgboost
+shap
+mlflow
+
 #stable-baselines3
 #gymnasium
 #torch
-#numpy
 
-#matplotlib
-#seaborn
 #tensorboard
 
-#scikit-learn
 #plotly
 #tqdm
 #loguru
@@ -27,5 +34,5 @@ msgpack
 #yfinance
 #optuna
 
-#wandb 
+#wandb
 #alibi-detect
