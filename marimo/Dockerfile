@@ -21,7 +21,10 @@ RUN pip install --no-cache-dir \
     matplotlib \
     seaborn \
     plotly \
-    mlflow
+    mlflow \
+    shap \
+    optuna \
+    optuna-integration
 
 # Créer le dossier notebooks
 RUN mkdir -p /app/notebooks

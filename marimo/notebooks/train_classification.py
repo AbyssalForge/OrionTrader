@@ -105,14 +105,21 @@ def _():
 
     import lightgbm as lgb
 
-    from sklearn.calibration import calibration_curve
+    # Optuna pour optimisation des hyperparamètres
+    import optuna
+    from optuna.integration import LightGBMPruningCallback
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+    from sklearn.calibration import calibration_curve, CalibratedClassifierCV
 
     RANDOM_STATE = 42
     np.random.seed(RANDOM_STATE)
 
     print("✅ Imports terminés")
     return (
+        CalibratedClassifierCV,
         LabelEncoder,
+        LightGBMPruningCallback,
         LogisticRegression,
         RANDOM_STATE,
         RandomForestClassifier,
@@ -129,6 +136,7 @@ def _():
         lgb,
         mlflow,
         np,
+        optuna,
         os,
         pd,
         plt,
@@ -1648,51 +1656,305 @@ def _(cm_df, mo):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🔧 Étape 7: Optimisation des Hyperparamètres (Optionnel)
+    ## 🔧 Étape 7: Optimisation des Hyperparamètres avec Optuna
 
-    **⭐ AMÉLIORATION EXPERTE**: Le modèle LightGBM est déjà optimisé!
+    **🎯 Objectif**: Trouver automatiquement les meilleurs hyperparamètres pour LightGBM.
 
-    **Ce qui a été fait automatiquement**:
-    - ✅ **Early stopping**: Arrêt automatique quand la validation ne s'améliore plus
-    - ✅ **Validation split**: 20% du train set pour validation
-    - ✅ **Paramètres optimisés**: Configuration testée pour time-series
+    ### Optuna vs GridSearchCV
 
-    **Paramètres actuels du modèle**:
-    - `learning_rate`: 0.05 (équilibre vitesse/précision)
-    - `num_leaves`: 31 (complexité modérée)
-    - `max_depth`: 6 (évite l'overfitting)
-    - `feature_fraction`: 0.8 (robustesse)
-    - `bagging_fraction`: 0.8 (réduction variance)
+    | Critère | GridSearchCV | Optuna |
+    |---------|--------------|--------|
+    | **Stratégie** | Grille exhaustive | Bayésien (intelligent) |
+    | **Efficacité** | Teste tout | Concentre sur les zones prometteuses |
+    | **Pruning** | ❌ Non | ✅ Arrête les mauvais essais tôt |
+    | **Temps** | Long (n^k combinaisons) | Rapide (guidé par les résultats) |
+    | **Flexibilité** | Fixe | Adaptatif |
 
-    **Si vous voulez optimiser davantage**:
-    Vous pouvez utiliser RandomizedSearchCV ou Optuna pour tester d'autres combinaisons,
-    mais les paramètres actuels sont déjà un bon point de départ.
+    ### Paramètres optimisés par Optuna
 
-    **⏭️ Passez directement à l'étape 8 (Sauvegarde MLflow)**
+    - `num_leaves`: Complexité de l'arbre (20-100)
+    - `learning_rate`: Vitesse d'apprentissage (0.01-0.2)
+    - `feature_fraction`: % features par arbre (0.5-1.0)
+    - `bagging_fraction`: % données par itération (0.5-1.0)
+    - `min_child_samples`: Échantillons min par feuille (5-100)
+    - `lambda_l1` / `lambda_l2`: Régularisation L1/L2
+    - `max_depth`: Profondeur max (3-12)
+
+    ### Workflow
+
+    1. **Modèle par défaut** (déjà entraîné à l'étape 5)
+    2. **Optimisation Optuna** (N trials)
+    3. **Comparaison** des performances
+    4. **Sélection automatique** du meilleur modèle
     """)
     return
 
 
 @app.cell
-def _(lgbm_model):
-    # Le modèle LightGBM est déjà optimisé avec early stopping
-    # On le garde tel quel pour la suite
-    best_model_optimized = lgbm_model
-    best_params = {
-        'learning_rate': 0.05,
-        'num_leaves': 31,
-        'max_depth': 6,
-        'feature_fraction': 0.8,
-        'bagging_fraction': 0.8,
-        'early_stopping_rounds': 50
+def _(mo):
+    # Slider pour le nombre de trials Optuna
+    n_trials_slider = mo.ui.slider(
+        10, 100, step=10, value=30,
+        label="Nombre de trials Optuna"
+    )
+    optuna_timeout_slider = mo.ui.slider(
+        60, 600, step=60, value=300,
+        label="Timeout (secondes)"
+    )
+
+    mo.md("""
+    ### ⚙️ Configuration Optuna
+
+    **Recommandations**:
+    - **30 trials** : Bon équilibre (recommandé pour débuter)
+    - **50+ trials** : Meilleure exploration si vous avez le temps
+    - **Timeout** : Limite de temps max (indépendant du nombre de trials)
+    """)
+
+    mo.hstack([n_trials_slider, optuna_timeout_slider])
+    return n_trials_slider, optuna_timeout_slider
+
+
+@app.cell
+def _(
+    RANDOM_STATE,
+    X_train_scaled,
+    balanced_accuracy_score,
+    categorical_feature_names,
+    lgb,
+    n_trials_slider,
+    optuna,
+    optuna_timeout_slider,
+    y_train,
+):
+    # ========================================================================
+    # OPTIMISATION OPTUNA
+    # ========================================================================
+
+    print("🔍 Optimisation Optuna des hyperparamètres LightGBM...")
+    print(f"   Nombre de trials: {n_trials_slider.value}")
+    print(f"   Timeout: {optuna_timeout_slider.value}s")
+    print("")
+
+    # Split temporel pour validation (même que l'entraînement initial)
+    split_val_idx_opt = int(len(X_train_scaled) * 0.8)
+    X_train_opt = X_train_scaled.iloc[:split_val_idx_opt]
+    X_val_opt = X_train_scaled.iloc[split_val_idx_opt:]
+    y_train_opt = y_train[:split_val_idx_opt]
+    y_val_opt = y_train[split_val_idx_opt:]
+
+    # Créer les datasets LightGBM
+    train_data_opt = lgb.Dataset(
+        X_train_opt,
+        label=y_train_opt,
+        categorical_feature=categorical_feature_names,
+        free_raw_data=False
+    )
+    val_data_opt = lgb.Dataset(
+        X_val_opt,
+        label=y_val_opt,
+        reference=train_data_opt,
+        categorical_feature=categorical_feature_names,
+        free_raw_data=False
+    )
+
+    def objective(trial):
+        """Fonction objective pour Optuna"""
+        params = {
+            'objective': 'multiclass',
+            'num_class': 3,
+            'metric': 'multi_logloss',
+            'boosting_type': 'gbdt',
+            'verbosity': -1,
+            'random_state': RANDOM_STATE,
+            # Hyperparamètres à optimiser
+            'num_leaves': trial.suggest_int('num_leaves', 20, 100),
+            'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.2, log=True),
+            'feature_fraction': trial.suggest_float('feature_fraction', 0.5, 1.0),
+            'bagging_fraction': trial.suggest_float('bagging_fraction', 0.5, 1.0),
+            'bagging_freq': trial.suggest_int('bagging_freq', 1, 10),
+            'min_child_samples': trial.suggest_int('min_child_samples', 5, 100),
+            'lambda_l1': trial.suggest_float('lambda_l1', 1e-8, 10.0, log=True),
+            'lambda_l2': trial.suggest_float('lambda_l2', 1e-8, 10.0, log=True),
+            'max_depth': trial.suggest_int('max_depth', 3, 12),
+        }
+
+        # Entraîner avec early stopping et pruning
+        callbacks = [
+            lgb.early_stopping(stopping_rounds=50, verbose=False),
+        ]
+
+        model = lgb.train(
+            params,
+            train_data_opt,
+            num_boost_round=500,
+            valid_sets=[val_data_opt],
+            valid_names=['valid'],
+            callbacks=callbacks
+        )
+
+        # Évaluer sur validation set
+        y_pred = model.predict(X_val_opt).argmax(axis=1)
+        return balanced_accuracy_score(y_val_opt, y_pred)
+
+    # Créer et lancer l'étude Optuna
+    study = optuna.create_study(
+        direction='maximize',
+        study_name='lightgbm_optimization',
+        pruner=optuna.pruners.MedianPruner(n_warmup_steps=10)
+    )
+
+    study.optimize(
+        objective,
+        n_trials=n_trials_slider.value,
+        timeout=optuna_timeout_slider.value,
+        show_progress_bar=True
+    )
+
+    print(f"\n✅ Optimisation terminée!")
+    print(f"   Trials complétés: {len(study.trials)}")
+    print(f"   Meilleur score (Balanced Accuracy): {study.best_value:.4f}")
+    print(f"\n📋 Meilleurs hyperparamètres:")
+    for opt_pname, opt_pval in study.best_params.items():
+        print(f"   - {opt_pname}: {opt_pval}")
+
+    # Entraîner le modèle final avec les meilleurs paramètres
+    best_params_optuna = {
+        'objective': 'multiclass',
+        'num_class': 3,
+        'metric': 'multi_logloss',
+        'boosting_type': 'gbdt',
+        'verbosity': -1,
+        'random_state': RANDOM_STATE,
+        **study.best_params
     }
 
-    print("✅ Modèle LightGBM déjà optimisé avec early stopping")
-    print(f"📊 Best iteration: {lgbm_model.best_iteration}")
-    print("\n📋 Paramètres utilisés:")
-    for param, value in best_params.items():
-        print(f"   - {param}: {value}")
-    return (best_model_optimized,)
+    lgbm_model_optuna = lgb.train(
+        best_params_optuna,
+        train_data_opt,
+        num_boost_round=1000,
+        valid_sets=[val_data_opt],
+        valid_names=['valid'],
+        callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)]
+    )
+
+    print(f"\n🎯 Modèle Optuna entraîné (best iteration: {lgbm_model_optuna.best_iteration})")
+    return lgbm_model_optuna, study, best_params_optuna
+
+
+@app.cell
+def _(
+    X_test_scaled,
+    X_train_scaled,
+    balanced_accuracy_score,
+    f1_score,
+    lgbm_model,
+    lgbm_model_optuna,
+    mo,
+    pd,
+    y_test,
+    y_train,
+):
+    # ========================================================================
+    # COMPARAISON: Modèle par défaut vs Modèle Optuna
+    # ========================================================================
+
+    print("📊 Comparaison des modèles...")
+    print("="*70)
+
+    # Prédictions modèle par défaut
+    y_pred_train_default = lgbm_model.predict(X_train_scaled).argmax(axis=1)
+    y_pred_test_default = lgbm_model.predict(X_test_scaled).argmax(axis=1)
+
+    default_train_bal_acc = balanced_accuracy_score(y_train, y_pred_train_default)
+    default_test_bal_acc = balanced_accuracy_score(y_test, y_pred_test_default)
+    default_test_f1 = f1_score(y_test, y_pred_test_default, average='macro')
+    default_overfit = default_train_bal_acc - default_test_bal_acc
+
+    # Prédictions modèle Optuna
+    y_pred_train_optuna = lgbm_model_optuna.predict(X_train_scaled).argmax(axis=1)
+    y_pred_test_optuna = lgbm_model_optuna.predict(X_test_scaled).argmax(axis=1)
+
+    optuna_train_bal_acc = balanced_accuracy_score(y_train, y_pred_train_optuna)
+    optuna_test_bal_acc = balanced_accuracy_score(y_test, y_pred_test_optuna)
+    optuna_test_f1 = f1_score(y_test, y_pred_test_optuna, average='macro')
+    optuna_overfit = optuna_train_bal_acc - optuna_test_bal_acc
+
+    # Créer tableau de comparaison Optuna
+    optuna_comparison_df = pd.DataFrame({
+        'Modèle': ['LightGBM (défaut)', 'LightGBM (Optuna)'],
+        'Train Bal. Acc': [round(default_train_bal_acc, 4), round(optuna_train_bal_acc, 4)],
+        'Test Bal. Acc': [round(default_test_bal_acc, 4), round(optuna_test_bal_acc, 4)],
+        'Test Macro F1': [round(default_test_f1, 4), round(optuna_test_f1, 4)],
+        'Overfitting': [round(default_overfit, 4), round(optuna_overfit, 4)],
+        'Best Iteration': [lgbm_model.best_iteration, lgbm_model_optuna.best_iteration]
+    })
+
+    print("\n📋 Tableau de comparaison:")
+    print(optuna_comparison_df.to_string(index=False))
+
+    # Déterminer le gagnant
+    improvement = optuna_test_bal_acc - default_test_bal_acc
+    if improvement > 0.005:  # Amélioration significative (> 0.5%)
+        winner = "Optuna"
+        winner_reason = f"Optuna améliore de +{improvement*100:.2f}%"
+    elif improvement < -0.005:  # Dégradation
+        winner = "Défaut"
+        winner_reason = f"Défaut est meilleur de +{-improvement*100:.2f}%"
+    else:
+        # Égalité: choisir celui avec moins d'overfitting
+        if abs(optuna_overfit) < abs(default_overfit):
+            winner = "Optuna"
+            winner_reason = "Performances similaires, Optuna a moins d'overfitting"
+        else:
+            winner = "Défaut"
+            winner_reason = "Performances similaires, Défaut a moins d'overfitting"
+
+    print(f"\n🏆 Gagnant: {winner}")
+    print(f"   Raison: {winner_reason}")
+
+    mo.ui.table(optuna_comparison_df)
+    return optuna_comparison_df, winner, default_test_bal_acc, optuna_test_bal_acc
+
+
+@app.cell
+def _(
+    lgbm_model,
+    lgbm_model_optuna,
+    winner,
+    best_params_optuna,
+):
+    # ========================================================================
+    # SÉLECTION DU MEILLEUR MODÈLE
+    # ========================================================================
+
+    if winner == "Optuna":
+        best_model_optimized = lgbm_model_optuna
+        best_params = best_params_optuna
+        model_source = "Optuna"
+        print("✅ Modèle Optuna sélectionné pour la suite du pipeline")
+    else:
+        best_model_optimized = lgbm_model
+        best_params = {
+            'objective': 'multiclass',
+            'num_class': 3,
+            'learning_rate': 0.05,
+            'num_leaves': 31,
+            'max_depth': 6,
+            'feature_fraction': 0.8,
+            'bagging_fraction': 0.8,
+        }
+        model_source = "Défaut"
+        print("✅ Modèle par défaut sélectionné (Optuna n'a pas amélioré)")
+
+    print(f"\n📊 Modèle sélectionné: LightGBM ({model_source})")
+    print(f"   Best iteration: {best_model_optimized.best_iteration}")
+    print(f"\n📋 Paramètres du modèle sélectionné:")
+    for sel_pname, sel_pval in best_params.items():
+        if sel_pname not in ['objective', 'num_class', 'metric', 'verbosity', 'random_state', 'boosting_type']:
+            print(f"   - {sel_pname}: {sel_pval}")
+
+    return best_model_optimized, best_params, model_source
 
 
 @app.cell
@@ -2070,14 +2332,14 @@ def _(mo):
 
 
 @app.cell
-def _(X_test_scaled, lgbm_model, pd, shap):
+def _(X_test_scaled, best_model_optimized, pd, shap):
 
     # ⭐ SHAP Analysis - Obligatoire selon expert
     print("🔍 Calcul des valeurs SHAP...")
     print("   (peut prendre quelques secondes)")
 
     # Créer l'explainer TreeExplainer (optimisé pour LightGBM)
-    explainer = shap.TreeExplainer(lgbm_model)
+    explainer = shap.TreeExplainer(best_model_optimized)
 
     # Calculer les valeurs SHAP (sample pour performance)
     # Limiter à 1000 échantillons pour la rapidité
@@ -2283,14 +2545,14 @@ def _(X_shap_sample, mo, np, plt, shap_values):
 
 
 @app.cell
-def _(lgbm_model, mo, pd, plt):
+def _(best_model_optimized, mo, pd, plt):
 
     mo.md("### 🌲 LightGBM Feature Importance (Gain vs Split)")
 
     # Feature importance native LightGBM
-    feature_importance_gain = lgbm_model.feature_importance(importance_type='gain')
-    feature_importance_split = lgbm_model.feature_importance(importance_type='split')
-    feature_names_lgb = lgbm_model.feature_name()
+    feature_importance_gain = best_model_optimized.feature_importance(importance_type='gain')
+    feature_importance_split = best_model_optimized.feature_importance(importance_type='split')
+    feature_names_lgb = best_model_optimized.feature_name()
 
     lgb_importance_df = pd.DataFrame({
         'Feature': feature_names_lgb,
@@ -2391,7 +2653,7 @@ def _(
     X_test_scaled,
     X_train_scaled,
     calibration_curve,
-    lgbm_model,
+    best_model_optimized,
     np,
     pd,
     plt,
@@ -2401,8 +2663,8 @@ def _(
     # ⭐ Calibration Analysis
 
     # 1. Obtenir les probabilités brutes du modèle
-    proba_train_raw = lgbm_model.predict(X_train_scaled)
-    proba_test_raw = lgbm_model.predict(X_test_scaled)
+    proba_train_raw = best_model_optimized.predict(X_train_scaled)
+    proba_test_raw = best_model_optimized.predict(X_test_scaled)
 
     print("🎯 Analyse de la calibration des probabilités...")
 
@@ -2461,6 +2723,221 @@ def _(
 @app.cell
 def _(calib_df, mo):
     mo.ui.table(calib_df)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ## 🔧 Étape 11bis: Correction de la Calibration (Platt Scaling / Isotonic)
+
+    ### 🎯 Objectif
+    Corriger les probabilités du modèle pour qu'elles reflètent mieux la réalité.
+
+    ### ❓ Pourquoi Calibrer ?
+
+    Vos ECE actuels montrent une **surconfiance** du modèle :
+    - SHORT: 6.7% d'erreur
+    - NEUTRAL: 7.6% d'erreur
+    - LONG: **9.3% d'erreur** (le plus mal calibré)
+
+    Quand le modèle prédit 70% de confiance pour LONG, la réalité est plutôt ~60-65%.
+
+    ### 🔧 Méthodes de Calibration
+
+    | Méthode | Description | Quand l'utiliser |
+    |---------|-------------|------------------|
+    | **Platt Scaling** | Régression logistique sur les probas | Dataset petit, calibration simple |
+    | **Isotonic Regression** | Régression non-paramétrique | Dataset grand (>1000), plus flexible |
+
+    ### ⚠️ Important
+    - La calibration est faite sur le **validation set** (pas le test set)
+    - Les probabilités calibrées seront utilisées pour le backtesting
+    - Le modèle original est conservé, on ajoute juste une couche de calibration
+    """)
+    return
+
+
+@app.cell
+def _(mo):
+    # Choix de la méthode de calibration
+    calibration_method = mo.ui.dropdown(
+        options=["sigmoid", "isotonic", "none"],
+        value="sigmoid",
+        label="Méthode de calibration"
+    )
+
+    mo.md("""
+    ### ⚙️ Configuration
+
+    - **sigmoid** (Platt Scaling) : Recommandé pour commencer
+    - **isotonic** : Plus flexible mais risque d'overfitting si peu de données
+    - **none** : Pas de calibration (garder les probas originales)
+    """)
+
+    calibration_method
+    return (calibration_method,)
+
+
+@app.cell
+def _(
+    X_train_scaled,
+    X_test_scaled,
+    best_model_optimized,
+    calibration_curve,
+    calibration_method,
+    np,
+    pd,
+    plt,
+    y_train,
+    y_test,
+):
+    # ========================================================================
+    # CALIBRATION DES PROBABILITÉS
+    # ========================================================================
+
+    print(f"🔧 Calibration des probabilités avec méthode: {calibration_method.value}")
+    print("="*70)
+
+    # Probabilités originales
+    proba_train_original = best_model_optimized.predict(X_train_scaled)
+    proba_test_original = best_model_optimized.predict(X_test_scaled)
+
+    if calibration_method.value == "none":
+        # Pas de calibration
+        proba_test_calibrated = proba_test_original
+        calibration_applied = False
+        print("⏭️ Pas de calibration appliquée")
+    else:
+        # Appliquer la calibration via une approche One-vs-Rest
+        # Pour chaque classe, on calibre séparément
+
+        from sklearn.isotonic import IsotonicRegression
+        from sklearn.linear_model import LogisticRegression as LR_Calib
+
+        # Split validation pour calibration (derniers 20% du train)
+        split_calib = int(len(X_train_scaled) * 0.8)
+        X_calib = X_train_scaled.iloc[split_calib:]
+        y_calib = y_train[split_calib:]
+        proba_calib = best_model_optimized.predict(X_calib)
+
+        print(f"📊 Données de calibration: {len(X_calib)} échantillons")
+
+        n_classes = 3
+        calibrators = []
+
+        for class_idx in range(n_classes):
+            # Labels binaires pour cette classe
+            y_binary = (y_calib == class_idx).astype(int)
+            proba_class = proba_calib[:, class_idx]
+
+            if calibration_method.value == "sigmoid":
+                # Platt Scaling: régression logistique
+                calibrator = LR_Calib(solver='lbfgs', max_iter=1000)
+                calibrator.fit(proba_class.reshape(-1, 1), y_binary)
+            else:
+                # Isotonic Regression
+                calibrator = IsotonicRegression(out_of_bounds='clip')
+                calibrator.fit(proba_class, y_binary)
+
+            calibrators.append(calibrator)
+
+        # Appliquer la calibration sur le test set
+        proba_test_calibrated = np.zeros_like(proba_test_original)
+
+        for class_idx in range(n_classes):
+            proba_class = proba_test_original[:, class_idx]
+            if calibration_method.value == "sigmoid":
+                proba_test_calibrated[:, class_idx] = calibrators[class_idx].predict_proba(
+                    proba_class.reshape(-1, 1)
+                )[:, 1]
+            else:
+                proba_test_calibrated[:, class_idx] = calibrators[class_idx].predict(proba_class)
+
+        # Renormaliser pour que la somme = 1
+        proba_test_calibrated = proba_test_calibrated / proba_test_calibrated.sum(axis=1, keepdims=True)
+        calibration_applied = True
+
+        print("✅ Calibration appliquée!")
+
+    # Calculer ECE avant/après
+    class_names_ece = ['SHORT', 'NEUTRAL', 'LONG']
+    ece_comparison = []
+
+    for ece_idx, ece_class in enumerate(class_names_ece):
+        y_binary_ece = (y_test == ece_idx).astype(int)
+
+        # ECE original
+        prob_orig_ece = proba_test_original[:, ece_idx]
+        try:
+            prob_true_orig_ece, prob_pred_orig_ece = calibration_curve(y_binary_ece, prob_orig_ece, n_bins=10, strategy='uniform')
+            ece_orig = np.abs(prob_true_orig_ece - prob_pred_orig_ece).mean()
+        except:
+            ece_orig = np.nan
+
+        # ECE calibré
+        prob_calib_ece = proba_test_calibrated[:, ece_idx]
+        try:
+            prob_true_calib_ece, prob_pred_calib_ece = calibration_curve(y_binary_ece, prob_calib_ece, n_bins=10, strategy='uniform')
+            ece_calib = np.abs(prob_true_calib_ece - prob_pred_calib_ece).mean()
+        except:
+            ece_calib = np.nan
+
+        ece_improvement = ece_orig - ece_calib if not np.isnan(ece_calib) else 0
+
+        ece_comparison.append({
+            'Classe': ece_class,
+            'ECE Original': round(ece_orig, 4) if not np.isnan(ece_orig) else 'N/A',
+            'ECE Calibré': round(ece_calib, 4) if not np.isnan(ece_calib) else 'N/A',
+            'Amélioration': f"+{ece_improvement*100:.1f}%" if ece_improvement > 0 else f"{ece_improvement*100:.1f}%"
+        })
+
+    ece_df = pd.DataFrame(ece_comparison)
+
+    print("\n📊 Comparaison ECE (avant/après calibration):")
+    print(ece_df.to_string(index=False))
+
+    # Visualisation
+    fig_calib_compare, axes_cc = plt.subplots(1, 3, figsize=(15, 5))
+    class_names_viz = ['SHORT', 'NEUTRAL', 'LONG']
+
+    for viz_idx, viz_class in enumerate(class_names_viz):
+        y_binary_viz = (y_test == viz_idx).astype(int)
+
+        # Original
+        prob_orig_viz = proba_test_original[:, viz_idx]
+        try:
+            prob_true_orig_viz, prob_pred_orig_viz = calibration_curve(y_binary_viz, prob_orig_viz, n_bins=10, strategy='uniform')
+            axes_cc[viz_idx].plot(prob_pred_orig_viz, prob_true_orig_viz, 'b-o', label='Original', alpha=0.7)
+        except:
+            pass
+
+        # Calibré
+        prob_calib_viz = proba_test_calibrated[:, viz_idx]
+        try:
+            prob_true_calib_viz, prob_pred_calib_viz = calibration_curve(y_binary_viz, prob_calib_viz, n_bins=10, strategy='uniform')
+            axes_cc[viz_idx].plot(prob_pred_calib_viz, prob_true_calib_viz, 'g-s', label='Calibré', alpha=0.7)
+        except:
+            pass
+
+        # Ligne parfaite
+        axes_cc[viz_idx].plot([0, 1], [0, 1], 'k--', label='Parfait')
+        axes_cc[viz_idx].set_xlabel('Probabilité prédite')
+        axes_cc[viz_idx].set_ylabel('Fréquence observée')
+        axes_cc[viz_idx].set_title(f'{viz_class}')
+        axes_cc[viz_idx].legend()
+        axes_cc[viz_idx].grid(True, alpha=0.3)
+
+    plt.suptitle('Courbes de Calibration: Original vs Calibré', fontsize=14, fontweight='bold')
+    plt.tight_layout()
+    plt.gca()
+
+    return proba_test_calibrated, ece_df, calibration_applied
+
+
+@app.cell
+def _(ece_df, mo):
+    mo.ui.table(ece_df)
     return
 
 
@@ -2526,10 +3003,16 @@ def _(mo):
 
 
 @app.cell
-def _(df_backtest, horizon, np, pd, proba_test_raw):
+def _(df_backtest, horizon, np, pd, proba_test_calibrated, calibration_applied):
     # ⭐ Grid Search pour optimiser les seuils
+    # Utilise les probabilités calibrées si disponibles
 
-    print("🔍 Optimisation des seuils de trading...")
+    proba_for_grid = proba_test_calibrated  # Utiliser les probas calibrées
+
+    if calibration_applied:
+        print("🔍 Optimisation des seuils de trading (avec probabilités calibrées)...")
+    else:
+        print("🔍 Optimisation des seuils de trading (probabilités originales)...")
 
     # Grille de seuils à tester
     long_thresholds_grid = [0.50, 0.55, 0.60, 0.65, 0.70]
@@ -2552,10 +3035,10 @@ def _(df_backtest, horizon, np, pd, proba_test_raw):
             # Appliquer les seuils
             # ⚠️ MARIMO: Utiliser nom unique pour éviter conflit
             predictions = []
-            for idx_grid in range(len(proba_test_raw)):
-                if proba_test_raw[idx_grid, 2] > long_th:
+            for idx_grid in range(len(proba_for_grid)):
+                if proba_for_grid[idx_grid, 2] > long_th:
                     predictions.append(2)  # LONG
-                elif proba_test_raw[idx_grid, 0] > short_th:
+                elif proba_for_grid[idx_grid, 0] > short_th:
                     predictions.append(0)  # SHORT
                 else:
                     predictions.append(1)  # NEUTRAL
@@ -2747,7 +3230,7 @@ def _(
     feature_cols,
     grid_df,
     horizon,
-    lgbm_model,
+    best_model_optimized,
     mean_shap_importance,
     mlflow,
     mlflow_uri_input,
@@ -2795,7 +3278,7 @@ def _(
                     'n_train': len(X_train_scaled),
                     'n_test': len(X_test_scaled),
                     'best_model': 'LightGBM',
-                    'best_iteration': int(lgbm_model.best_iteration)
+                    'best_iteration': int(best_model_optimized.best_iteration)
                 })
 
                 # === METRIQUES DE TOUS LES MODELES ===
@@ -2908,9 +3391,9 @@ def _(
                 # 4. Feature Importance LightGBM
                 print("[MLFLOW] Sauvegarde feature importance...")
                 try:
-                    importance_gain = lgbm_model.feature_importance(importance_type='gain')
-                    importance_split = lgbm_model.feature_importance(importance_type='split')
-                    feature_names_mlf = lgbm_model.feature_name()
+                    importance_gain = best_model_optimized.feature_importance(importance_type='gain')
+                    importance_split = best_model_optimized.feature_importance(importance_type='split')
+                    feature_names_mlf = best_model_optimized.feature_name()
 
                     df_imp_mlf = pd.DataFrame({
                         'Feature': feature_names_mlf,
@@ -3021,7 +3504,7 @@ def _(
                 # 6. Calibration
                 print("[MLFLOW] Sauvegarde calibration...")
                 try:
-                    proba_train_mlf = lgbm_model.predict(X_train_scaled)
+                    proba_train_mlf = best_model_optimized.predict(X_train_scaled)
                     fig_calib_mlf, axes_calib_mlf = plt.subplots(1, 3, figsize=(15, 5))
                     class_names_mlf = ['SHORT', 'NEUTRAL', 'LONG']
 
@@ -3084,11 +3567,11 @@ def _(
                 # === SAUVEGARDER LE MODELE ===
                 print("[MLFLOW] Sauvegarde du modele LightGBM...")
                 try:
-                    print(f"   Type du modèle: {type(lgbm_model)}")
+                    print(f"   Type du modèle: {type(best_model_optimized)}")
 
                     # Méthode alternative : sauvegarder manuellement puis logger
                     model_path = os.path.join(tmp_dir, 'lgbm_model.txt')
-                    lgbm_model.save_model(model_path)
+                    best_model_optimized.save_model(model_path)
                     print(f"   Modèle sauvegardé localement: {model_path}")
 
                     # Logger comme artifact
@@ -3099,7 +3582,7 @@ def _(
                     try:
                         model_name = "OrionTrader_LightGBM_Classifier"
                         mlflow.lightgbm.log_model(
-                            lgbm_model,
+                            best_model_optimized,
                             artifact_path="model_native",
                             registered_model_name=model_name
                         )
@@ -3109,7 +3592,7 @@ def _(
                         # Si l'enregistrement échoue, essayer sans le registered_model_name
                         try:
                             mlflow.lightgbm.log_model(
-                                lgbm_model,
+                                best_model_optimized,
                                 artifact_path="model_native"
                             )
                             print("   ✅ Modèle natif sauvegardé (sans registry)")
