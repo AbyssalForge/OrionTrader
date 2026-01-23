@@ -4,7 +4,7 @@ Tests pour Bronze Service - Extraction de données
 import pytest
 import pandas as pd
 from unittest.mock import patch, MagicMock
-from airflow.services.bronze_service import (
+from services.bronze_service import (
     extract_mt5_data,
     extract_yahoo_data,
     extract_eurostat_data
@@ -20,7 +20,7 @@ from airflow.services.bronze_service import (
 def test_extract_mt5_data_valid_range(temp_parquet_file):
     """Test extraction MT5 avec dates valides"""
     # Mock la fonction import_data
-    with patch('airflow.services.bronze_service.import_data') as mock_import:
+    with patch('services.bronze_service.import_data') as mock_import:
         # Simuler retour de données
         mock_import.return_value = {
             'time': ['2024-01-01 00:00:00', '2024-01-01 00:15:00'],
@@ -43,7 +43,7 @@ def test_extract_mt5_data_valid_range(temp_parquet_file):
 @pytest.mark.bronze
 def test_extract_mt5_data_invalid_range():
     """Test extraction avec dates invalides (end < start)"""
-    with patch('airflow.services.bronze_service.import_data') as mock_import:
+    with patch('services.bronze_service.import_data') as mock_import:
         mock_import.side_effect = ValueError("End date must be after start date")
 
         with pytest.raises(ValueError):
@@ -54,7 +54,7 @@ def test_extract_mt5_data_invalid_range():
 @pytest.mark.bronze
 def test_extract_mt5_data_empty_result():
     """Test extraction qui retourne aucune donnée"""
-    with patch('airflow.services.bronze_service.import_data') as mock_import:
+    with patch('services.bronze_service.import_data') as mock_import:
         mock_import.return_value = {
             'time': [],
             'open': [],
@@ -78,7 +78,7 @@ def test_extract_mt5_data_empty_result():
 @pytest.mark.bronze
 def test_extract_yahoo_data_valid():
     """Test extraction Yahoo Finance avec dates valides"""
-    with patch('airflow.clients.yahoo_client.YahooFinanceClient') as MockClient:
+    with patch('clients.yahoo_client.YahooFinanceClient') as MockClient:
         # Mock client
         mock_instance = MockClient.return_value
         mock_instance.get_macro_context.return_value = {
@@ -97,7 +97,7 @@ def test_extract_yahoo_data_valid():
 @pytest.mark.bronze
 def test_extract_yahoo_data_api_error():
     """Test gestion erreur API Yahoo"""
-    with patch('airflow.clients.yahoo_client.YahooFinanceClient') as MockClient:
+    with patch('clients.yahoo_client.YahooFinanceClient') as MockClient:
         mock_instance = MockClient.return_value
         mock_instance.get_macro_context.side_effect = Exception("API Error")
 
@@ -113,7 +113,7 @@ def test_extract_yahoo_data_api_error():
 @pytest.mark.bronze
 def test_extract_eurostat_data_valid():
     """Test extraction Eurostat avec date valide"""
-    with patch('airflow.clients.eurostat_client.EurostatClient') as MockClient:
+    with patch('clients.eurostat_client.EurostatClient') as MockClient:
         mock_instance = MockClient.return_value
         mock_instance.extract_all_documents.return_value = {
             'pib': 'data/documents/pib.parquet',
@@ -131,9 +131,9 @@ def test_extract_eurostat_data_valid():
 @pytest.mark.slow
 def test_extract_pipeline_complete():
     """Test du pipeline complet d'extraction (intégration)"""
-    with patch('airflow.services.bronze_service.import_data') as mock_mt5, \
-         patch('airflow.clients.yahoo_client.YahooFinanceClient') as mock_yahoo, \
-         patch('airflow.clients.eurostat_client.EurostatClient') as mock_eurostat:
+    with patch('services.bronze_service.import_data') as mock_mt5, \
+         patch('clients.yahoo_client.YahooFinanceClient') as mock_yahoo, \
+         patch('clients.eurostat_client.EurostatClient') as mock_eurostat:
 
         # Setup mocks
         mock_mt5.return_value = {'time': ['2024-01-01'], 'close': [1.08]}

@@ -4,7 +4,7 @@ Tests pour Silver Service - Transformation et Feature Engineering
 import pytest
 import pandas as pd
 import numpy as np
-from airflow.services.silver_service import (
+from services.silver_service import (
     transform_mt5_features,
     transform_yahoo_features,
     transform_documents_features,
@@ -12,7 +12,7 @@ from airflow.services.silver_service import (
     _add_mt5_features,
     _calculate_composite_features
 )
-from tests.conftest import assert_dataframe_valid, assert_no_leakage
+from conftest import assert_dataframe_valid, assert_no_leakage
 
 
 # ============================================================================

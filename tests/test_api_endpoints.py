@@ -15,7 +15,7 @@ import pandas as pd
 @pytest.mark.unit
 def test_market_latest_endpoint(test_api_client):
     """Test GET /market/latest"""
-    with patch('fastapi.app.routes.market.get_db') as mock_db:
+    with patch('app.routes.market.get_db') as mock_db:
         # Mock database query
         mock_session = MagicMock()
         mock_snapshot = MagicMock()
@@ -38,7 +38,7 @@ def test_market_latest_endpoint(test_api_client):
 @pytest.mark.unit
 def test_market_ohlcv_m15_endpoint(test_api_client):
     """Test GET /market/ohlcv/m15"""
-    with patch('fastapi.app.routes.market.get_db') as mock_db:
+    with patch('app.routes.market.get_db') as mock_db:
         mock_session = MagicMock()
 
         # Mock query result
@@ -64,8 +64,8 @@ def test_market_ohlcv_m15_endpoint(test_api_client):
 @pytest.mark.unit
 def test_health_endpoint(test_api_client):
     """Test GET /health"""
-    with patch('fastapi.app.routes.market.test_connection') as mock_test_conn, \
-         patch('fastapi.app.routes.market.get_table_counts') as mock_counts:
+    with patch('app.routes.market.test_connection') as mock_test_conn, \
+         patch('app.routes.market.get_table_counts') as mock_counts:
 
         mock_test_conn.return_value = True
         mock_counts.return_value = {
@@ -92,7 +92,7 @@ def test_health_endpoint(test_api_client):
 @pytest.mark.ml
 def test_model_predict_endpoint(test_api_client, trained_model):
     """Test POST /model/predict"""
-    with patch('fastapi.app.routes.model.load_model_with_cache') as mock_load:
+    with patch('app.routes.model.load_model_with_cache') as mock_load:
         mock_load.return_value = trained_model
 
         payload = {
@@ -135,7 +135,7 @@ def test_model_predict_invalid_input(test_api_client):
 @pytest.mark.ml
 def test_model_info_endpoint(test_api_client):
     """Test GET /model/info"""
-    with patch('fastapi.app.routes.model._model_cache') as mock_cache:
+    with patch('app.routes.model._model_cache') as mock_cache:
         mock_cache.return_value = {
             'model': MagicMock(),
             'version': 'latest',
@@ -153,7 +153,7 @@ def test_model_info_endpoint(test_api_client):
 @pytest.mark.ml
 def test_model_reload_endpoint(test_api_client, trained_model):
     """Test POST /model/reload"""
-    with patch('fastapi.app.routes.model.load_model_with_cache') as mock_load:
+    with patch('app.routes.model.load_model_with_cache') as mock_load:
         mock_load.return_value = trained_model
 
         response = test_api_client.post("/model/reload")
@@ -171,7 +171,7 @@ def test_model_reload_endpoint(test_api_client, trained_model):
 @pytest.mark.unit
 def test_signals_high_confidence_endpoint(test_api_client):
     """Test GET /signals/high-confidence"""
-    with patch('fastapi.app.routes.signals.get_db') as mock_db:
+    with patch('app.routes.signals.get_db') as mock_db:
         mock_session = MagicMock()
 
         mock_signal = MagicMock()
@@ -197,7 +197,7 @@ def test_signals_high_confidence_endpoint(test_api_client):
 @pytest.mark.unit
 def test_data_features_mt5_endpoint(test_api_client):
     """Test GET /data/features/mt5"""
-    with patch('fastapi.app.routes.data.get_db') as mock_db:
+    with patch('app.routes.data.get_db') as mock_db:
         mock_session = MagicMock()
 
         mock_record = MagicMock()
@@ -223,8 +223,8 @@ def test_data_features_mt5_endpoint(test_api_client):
 @pytest.mark.unit
 def test_auth_token_endpoint(test_api_client):
     """Test POST /auth/token"""
-    with patch('fastapi.app.routes.auth.authenticate_user') as mock_auth, \
-         patch('fastapi.app.routes.auth.create_access_token') as mock_token:
+    with patch('app.routes.auth.authenticate_user') as mock_auth, \
+         patch('app.routes.auth.create_access_token') as mock_token:
 
         mock_auth.return_value = MagicMock(username='test_user')
         mock_token.return_value = 'fake_jwt_token'
