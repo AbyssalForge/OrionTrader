@@ -76,7 +76,7 @@ def test_extract_mt5_data_empty_result():
 
 @pytest.mark.unit
 @pytest.mark.bronze
-def test_extract_yahoo_data_valid():
+def test_extract_yahoo_data_valid(mock_vault_client):
     """Test extraction Yahoo Finance avec dates valides"""
     with patch('clients.yahoo_client.YahooFinanceClient') as MockClient:
         # Mock client
@@ -95,7 +95,7 @@ def test_extract_yahoo_data_valid():
 
 @pytest.mark.unit
 @pytest.mark.bronze
-def test_extract_yahoo_data_api_error():
+def test_extract_yahoo_data_api_error(mock_vault_client):
     """Test gestion erreur API Yahoo"""
     with patch('clients.yahoo_client.YahooFinanceClient') as MockClient:
         mock_instance = MockClient.return_value
@@ -111,7 +111,7 @@ def test_extract_yahoo_data_api_error():
 
 @pytest.mark.unit
 @pytest.mark.bronze
-def test_extract_eurostat_data_valid():
+def test_extract_eurostat_data_valid(mock_vault_client):
     """Test extraction Eurostat avec date valide"""
     with patch('clients.eurostat_client.EurostatClient') as MockClient:
         mock_instance = MockClient.return_value
@@ -129,7 +129,7 @@ def test_extract_eurostat_data_valid():
 @pytest.mark.integration
 @pytest.mark.bronze
 @pytest.mark.slow
-def test_extract_pipeline_complete():
+def test_extract_pipeline_complete(mock_vault_client):
     """Test du pipeline complet d'extraction (intégration)"""
     with patch('services.bronze_service.import_data') as mock_mt5, \
          patch('clients.yahoo_client.YahooFinanceClient') as mock_yahoo, \

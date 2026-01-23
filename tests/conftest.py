@@ -156,7 +156,7 @@ def sample_training_data():
         'volatility_1h': np.abs(np.random.randn(n_samples) * 0.002),
         'momentum_1h': np.random.randn(n_samples) * 0.001,
         'dxy_trend': np.random.randn(n_samples) * 0.005,
-        'vix_close': 15 + np.random.randn(n_samples) * 5,
+        'vix_close': np.clip(15 + np.random.randn(n_samples) * 5, 5, 80),
     })
 
     # Labels: BUY (1), HOLD (0), SELL (-1)
