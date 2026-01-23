@@ -41,9 +41,11 @@ jobs:
           pip install -r requirements-dev.txt
           pip install -r airflow/requirements.txt || echo "No airflow requirements"
           pip install -r fastapi/requirements.txt || echo "No fastapi requirements"
+          pip install -e . || echo "No package setup"
 
       - name: Run tests with coverage
         run: |
+          export PYTHONPATH="${PYTHONPATH}:${PWD}"
           pytest tests/ \
             --cov=airflow \
             --cov=fastapi \
