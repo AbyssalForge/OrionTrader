@@ -191,35 +191,38 @@ def trained_model(sample_training_data):
 @pytest.fixture
 def mock_vault_client(monkeypatch):
     """Mock du client Vault pour les tests"""
+    class MockKV:
+        class MockV2:
+            def read_secret_version(self, path):
+                # Retourner des credentials de test selon le path
+                return {
+                    'data': {
+                        'data': {
+                            'POSTGRES_HOST': 'localhost',
+                            'POSTGRES_PORT': '5432',
+                            'POSTGRES_DB': 'test_db',
+                            'POSTGRES_USER': 'test_user',
+                            'POSTGRES_PASSWORD': 'test_password',
+                            'URL': 'http://test-url.com',
+                            'URL_ecb_eurozone_cpi': 'http://test-ecb.com',
+                            'URL_pib': 'http://test-pib.com',
+                        }
+                    }
+                }
+
+        def __init__(self):
+            self.v2 = self.MockV2()
+
+    class MockSecrets:
+        def __init__(self):
+            self.kv = MockKV()
+
     class MockVaultClient:
         def __init__(self, *args, **kwargs):
-            pass
+            self.secrets = MockSecrets()
 
         def is_authenticated(self):
             return True
-
-        def secrets(self):
-            return self
-
-        def kv(self):
-            return self
-
-        def v2(self):
-            return self
-
-        def read_secret_version(self, path):
-            # Retourner des credentials de test
-            return {
-                'data': {
-                    'data': {
-                        'POSTGRES_HOST': 'localhost',
-                        'POSTGRES_PORT': '5432',
-                        'POSTGRES_DB': 'test_db',
-                        'POSTGRES_USER': 'test_user',
-                        'POSTGRES_PASSWORD': 'test_password',
-                    }
-                }
-            }
 
     import hvac
     monkeypatch.setattr(hvac, "Client", MockVaultClient)

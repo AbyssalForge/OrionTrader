@@ -91,9 +91,13 @@ def test_mt5_volatility_calculation(sample_mt5_data):
     sample_mt5_data = sample_mt5_data.set_index('time')
     df_transformed = _add_mt5_features(sample_mt5_data)
 
-    # Volatilité doit être positive ou NaN
-    assert (df_transformed['volatility_1h'] >= 0).all() or df_transformed['volatility_1h'].isna().all()
-    assert (df_transformed['volatility_4h'] >= 0).all() or df_transformed['volatility_4h'].isna().all()
+    # Volatilité doit être positive (ou NaN pour les premières valeurs)
+    # Vérifier que toutes les valeurs non-NaN sont >= 0
+    volatility_1h_values = df_transformed['volatility_1h'].dropna()
+    volatility_4h_values = df_transformed['volatility_4h'].dropna()
+
+    assert (volatility_1h_values >= 0).all(), "Volatility 1h has negative values"
+    assert (volatility_4h_values >= 0).all(), "Volatility 4h has negative values"
 
 
 # ============================================================================

@@ -322,6 +322,9 @@ def test_mlflow_model_logging(trained_model, sample_training_data):
 
     with tempfile.TemporaryDirectory() as tmpdir:
         mlflow.set_tracking_uri(f"file://{tmpdir}")
+        # Créer un experiment pour les tests
+        mlflow.create_experiment("test_experiment")
+        mlflow.set_experiment("test_experiment")
 
         with mlflow.start_run():
             # Log model
