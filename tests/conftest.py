@@ -195,6 +195,9 @@ def mock_vault_client(monkeypatch):
         def __init__(self, *args, **kwargs):
             pass
 
+        def is_authenticated(self):
+            return True
+
         def secrets(self):
             return self
 
