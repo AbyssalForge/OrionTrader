@@ -1,6 +1,16 @@
 """
 Configuration pytest - Fixtures partagées pour tous les tests
 """
+import sys
+import os
+from pathlib import Path
+
+# Ajouter le répertoire airflow au PYTHONPATH pour les imports
+project_root = Path(__file__).parent.parent
+airflow_path = project_root / "airflow"
+if str(airflow_path) not in sys.path:
+    sys.path.insert(0, str(airflow_path))
+
 import pytest
 import pandas as pd
 import numpy as np
@@ -8,7 +18,6 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import tempfile
-import os
 
 # ============================================================================
 # FIXTURES - DONNÉES DE TEST
@@ -96,7 +105,7 @@ def test_db_engine():
 @pytest.fixture
 def test_db_session(test_db_engine):
     """Crée une session de base de données pour les tests"""
-    from airflow.models.base import Base
+    from models.base import Base
 
     # Créer toutes les tables
     Base.metadata.create_all(test_db_engine)
@@ -121,7 +130,12 @@ def test_db_session(test_db_engine):
 def test_api_client():
     """Client de test FastAPI"""
     from fastapi.testclient import TestClient
-    from fastapi.app.main import app
+    # Ajouter le répertoire fastapi au path si nécessaire
+    fastapi_path = project_root / "fastapi"
+    if str(fastapi_path) not in sys.path:
+        sys.path.insert(0, str(fastapi_path))
+
+    from app.main import app
 
     client = TestClient(app)
     yield client
