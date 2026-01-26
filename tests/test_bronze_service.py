@@ -79,7 +79,7 @@ def test_extract_mt5_data_empty_result():
 @pytest.mark.bronze
 def test_extract_yahoo_data_valid(mock_vault_client):
     """Test extraction Yahoo Finance avec dates valides"""
-    with patch('clients.yahoo_client.YahooFinanceClient') as MockClient:
+    with patch('services.bronze_service.YahooFinanceClient') as MockClient:
         # Mock client
         mock_instance = MockClient.return_value
         mock_instance.get_macro_context.return_value = {
@@ -101,7 +101,7 @@ def test_extract_yahoo_data_valid(mock_vault_client):
 @pytest.mark.bronze
 def test_extract_yahoo_data_api_error(mock_vault_client):
     """Test gestion erreur API Yahoo"""
-    with patch('clients.yahoo_client.YahooFinanceClient') as MockClient:
+    with patch('services.bronze_service.YahooFinanceClient') as MockClient:
         mock_instance = MockClient.return_value
         mock_instance.get_macro_context.side_effect = Exception("API Error")
 
@@ -120,17 +120,18 @@ def test_extract_yahoo_data_api_error(mock_vault_client):
 @pytest.mark.bronze
 def test_extract_eurostat_data_valid(mock_vault_client):
     """Test extraction Eurostat avec date valide"""
-    with patch('clients.eurostat_client.EurostatClient') as MockClient:
+    with patch('services.bronze_service.EurostatClient') as MockClient:
         mock_instance = MockClient.return_value
         mock_instance.extract_all_documents.return_value = {
             'pib': 'data/documents/pib.parquet',
             'cpi': 'data/documents/cpi.parquet',
+            'events': 'data/documents/events.parquet',
         }
 
         result = extract_eurostat_data(start=datetime(2024, 1, 1))
 
         assert isinstance(result, dict)
-        assert 'pib' in result or 'cpi' in result
+        assert 'pib' in result or 'cpi' in result or 'events' in result
 
 
 @pytest.mark.integration
@@ -139,17 +140,19 @@ def test_extract_eurostat_data_valid(mock_vault_client):
 def test_extract_pipeline_complete(mock_vault_client):
     """Test du pipeline complet d'extraction (intégration)"""
     with patch('services.bronze_service.import_data') as mock_mt5, \
-         patch('clients.yahoo_client.YahooFinanceClient') as mock_yahoo, \
-         patch('clients.eurostat_client.EurostatClient') as mock_eurostat:
+         patch('services.bronze_service.YahooFinanceClient') as mock_yahoo, \
+         patch('services.bronze_service.EurostatClient') as mock_eurostat:
 
         # Setup mocks
         mock_mt5.return_value = {'time': ['2024-01-01'], 'close': [1.08]}
 
         mock_yahoo_instance = mock_yahoo.return_value
-        mock_yahoo_instance.get_macro_context.return_value = {'spx': pd.DataFrame()}
+        mock_yahoo_instance.get_macro_context.return_value = {
+            'spx': pd.DataFrame({'time': pd.date_range('2024-01-01', periods=5), 'close': [4500]*5})
+        }
 
         mock_eurostat_instance = mock_eurostat.return_value
-        mock_eurostat_instance.extract_all_documents.return_value = {}
+        mock_eurostat_instance.extract_all_documents.return_value = {'events': 'data/documents/events.parquet'}
 
         # Exécuter pipeline
         mt5_result = extract_mt5_data('2024-01-01', '2024-01-31')

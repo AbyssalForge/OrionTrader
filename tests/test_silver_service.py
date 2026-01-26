@@ -283,6 +283,8 @@ def test_transform_market_snapshot_integration(sample_mt5_data, sample_yahoo_dat
             if col in sample_yahoo_data.columns:
                 symbol = col.replace('_close', '')
                 df_symbol = sample_yahoo_data[['time', col]].copy()
+                # Renommer la colonne en 'close' comme attendu par transform_yahoo_features
+                df_symbol = df_symbol.rename(columns={col: 'close'})
                 path = os.path.join(tmpdir, f'{symbol}.parquet')
                 df_symbol.to_parquet(path)
                 yahoo_parquets[symbol] = path
