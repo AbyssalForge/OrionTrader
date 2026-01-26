@@ -78,11 +78,11 @@ jobs:
 
       - name: Test docker-compose config
         run: |
-          docker-compose config
+          docker compose config
 
       - name: Build Docker images
         run: |
-          docker-compose build --parallel || docker-compose build
+          docker compose build --parallel || docker compose build
         timeout-minutes: 20
 
       - name: List built images
