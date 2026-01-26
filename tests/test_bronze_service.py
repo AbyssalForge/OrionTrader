@@ -80,11 +80,20 @@ def test_extract_mt5_data_empty_result():
 def test_extract_yahoo_data_valid(mock_vault_client):
     """Test extraction Yahoo Finance avec dates valides"""
     with patch('services.bronze_service.YahooFinanceClient') as MockClient:
-        # Mock client
+        # Mock client - DataFrames avec time comme index
         mock_instance = MockClient.return_value
+        df_spx = pd.DataFrame({
+            'time': pd.date_range('2024-01-01', periods=5, tz='UTC'),
+            'close': [4500.0]*5
+        }).set_index('time')
+        df_dxy = pd.DataFrame({
+            'time': pd.date_range('2024-01-01', periods=5, tz='UTC'),
+            'close': [103.0]*5
+        }).set_index('time')
+
         mock_instance.get_macro_context.return_value = {
-            'spx': pd.DataFrame({'time': pd.date_range('2024-01-01', periods=5), 'close': [4500]*5}),
-            'dxy': pd.DataFrame({'time': pd.date_range('2024-01-01', periods=5), 'close': [103]*5}),
+            'spx': df_spx,
+            'dxy': df_dxy,
         }
 
         result = extract_yahoo_data(
@@ -122,10 +131,20 @@ def test_extract_eurostat_data_valid(mock_vault_client):
     """Test extraction Eurostat avec date valide"""
     with patch('services.bronze_service.EurostatClient') as MockClient:
         mock_instance = MockClient.return_value
+        # Le mock doit retourner des DataFrames, pas des chemins de fichiers
         mock_instance.extract_all_documents.return_value = {
-            'pib': 'data/documents/pib.parquet',
-            'cpi': 'data/documents/cpi.parquet',
-            'events': 'data/documents/events.parquet',
+            'pib': pd.DataFrame({
+                'time': pd.date_range('2024-01-01', periods=3, freq='Q', tz='UTC'),
+                'eurozone_pib': [1.5, 1.6, 1.7]
+            }),
+            'cpi': pd.DataFrame({
+                'time': pd.date_range('2024-01-01', periods=3, freq='M', tz='UTC'),
+                'eurozone_cpi': [2.1, 2.2, 2.3]
+            }),
+            'events': pd.DataFrame({
+                'time': pd.date_range('2024-01-01', periods=5, tz='UTC'),
+                'event': ['Event A', 'Event B', 'Event C', 'Event D', 'Event E']
+            }),
         }
 
         result = extract_eurostat_data(start=datetime(2024, 1, 1))
@@ -147,12 +166,21 @@ def test_extract_pipeline_complete(mock_vault_client):
         mock_mt5.return_value = {'time': ['2024-01-01'], 'close': [1.08]}
 
         mock_yahoo_instance = mock_yahoo.return_value
+        df_spx = pd.DataFrame({
+            'time': pd.date_range('2024-01-01', periods=5, tz='UTC'),
+            'close': [4500.0]*5
+        }).set_index('time')
         mock_yahoo_instance.get_macro_context.return_value = {
-            'spx': pd.DataFrame({'time': pd.date_range('2024-01-01', periods=5), 'close': [4500]*5})
+            'spx': df_spx
         }
 
         mock_eurostat_instance = mock_eurostat.return_value
-        mock_eurostat_instance.extract_all_documents.return_value = {'events': 'data/documents/events.parquet'}
+        mock_eurostat_instance.extract_all_documents.return_value = {
+            'events': pd.DataFrame({
+                'time': pd.date_range('2024-01-01', periods=5, tz='UTC'),
+                'event': ['Event 1', 'Event 2', 'Event 3', 'Event 4', 'Event 5']
+            })
+        }
 
         # Exécuter pipeline
         mt5_result = extract_mt5_data('2024-01-01', '2024-01-31')
