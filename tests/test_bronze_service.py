@@ -3,6 +3,7 @@ Tests pour Bronze Service - Extraction de données
 """
 import pytest
 import pandas as pd
+from datetime import datetime
 from unittest.mock import patch, MagicMock
 from services.bronze_service import (
     extract_mt5_data,
@@ -86,7 +87,10 @@ def test_extract_yahoo_data_valid(mock_vault_client):
             'dxy': pd.DataFrame({'time': pd.date_range('2024-01-01', periods=5), 'close': [103]*5}),
         }
 
-        result = extract_yahoo_data(start='2024-01-01', end='2024-01-05')
+        result = extract_yahoo_data(
+            start=datetime(2024, 1, 1),
+            end=datetime(2024, 1, 5)
+        )
 
         # Vérifications
         assert isinstance(result, dict)
@@ -102,7 +106,10 @@ def test_extract_yahoo_data_api_error(mock_vault_client):
         mock_instance.get_macro_context.side_effect = Exception("API Error")
 
         with pytest.raises(Exception):
-            extract_yahoo_data(start='2024-01-01', end='2024-01-05')
+            extract_yahoo_data(
+                start=datetime(2024, 1, 1),
+                end=datetime(2024, 1, 5)
+            )
 
 
 # ============================================================================
@@ -120,7 +127,7 @@ def test_extract_eurostat_data_valid(mock_vault_client):
             'cpi': 'data/documents/cpi.parquet',
         }
 
-        result = extract_eurostat_data(start='2024-01-01')
+        result = extract_eurostat_data(start=datetime(2024, 1, 1))
 
         assert isinstance(result, dict)
         assert 'pib' in result or 'cpi' in result
@@ -146,8 +153,11 @@ def test_extract_pipeline_complete(mock_vault_client):
 
         # Exécuter pipeline
         mt5_result = extract_mt5_data('2024-01-01', '2024-01-31')
-        yahoo_result = extract_yahoo_data('2024-01-01', '2024-01-31')
-        eurostat_result = extract_eurostat_data('2024-01-01')
+        yahoo_result = extract_yahoo_data(
+            datetime(2024, 1, 1),
+            datetime(2024, 1, 31)
+        )
+        eurostat_result = extract_eurostat_data(datetime(2024, 1, 1))
 
         # Vérifications
         assert mt5_result is not None

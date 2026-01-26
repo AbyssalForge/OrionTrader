@@ -116,7 +116,9 @@ def test_transform_yahoo_features_basic(sample_yahoo_data):
         yahoo_parquets = {}
         for symbol in ['spx', 'gold', 'dxy', 'vix']:
             if f'{symbol}_close' in sample_yahoo_data.columns:
+                # Renommer la colonne en 'close' comme attendu par transform_yahoo_features
                 df_symbol = sample_yahoo_data[['time', f'{symbol}_close']].copy()
+                df_symbol = df_symbol.rename(columns={f'{symbol}_close': 'close'})
                 path = os.path.join(tmpdir, f'{symbol}.parquet')
                 df_symbol.to_parquet(path)
                 yahoo_parquets[symbol] = path
@@ -138,6 +140,8 @@ def test_yahoo_data_available_flag(sample_yahoo_data):
     with tempfile.TemporaryDirectory() as tmpdir:
         yahoo_parquets = {}
         df_spx = sample_yahoo_data[['time', 'spx_close']].copy()
+        # Renommer la colonne en 'close' comme attendu par transform_yahoo_features
+        df_spx = df_spx.rename(columns={'spx_close': 'close'})
         path = os.path.join(tmpdir, 'spx.parquet')
         df_spx.to_parquet(path)
         yahoo_parquets['spx'] = path
