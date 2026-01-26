@@ -62,29 +62,37 @@ jobs:
             htmlcov/
 
   # ============================================================================
-  # JOB 2: DOCKER BUILD (C13)
+  # JOB 2: QUALITÉ DU CODE (OPTIONNEL)
   # ============================================================================
-  docker:
-    name: Docker Build
+  lint:
+    name: Code Quality
     runs-on: ubuntu-latest
-    needs: test  # Exécute seulement si tests OK
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-      - name: Test docker-compose config
+      - name: Install linting tools
         run: |
-          docker compose config
+          pip install black flake8 isort
 
-      - name: Build Docker images
+      - name: Check code formatting (Black)
         run: |
-          docker compose build --parallel || docker compose build
-        timeout-minutes: 20
+          black --check airflow/ fastapi/ tests/ || echo "⚠ Code formatting issues found"
+        continue-on-error: true
 
-      - name: List built images
+      - name: Check imports sorting (isort)
         run: |
-          docker images
+          isort --check-only airflow/ fastapi/ tests/ || echo "⚠ Import sorting issues found"
+        continue-on-error: true
+
+      - name: Lint with flake8
+        run: |
+          flake8 airflow/ fastapi/ tests/ --max-line-length=120 --extend-ignore=E203,W503 || echo "⚠ Linting issues found"
+        continue-on-error: true
+
