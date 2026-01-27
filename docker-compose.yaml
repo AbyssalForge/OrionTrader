@@ -192,6 +192,7 @@ services:
     container_name: orion_prometheus
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
     ports:
       - "9090:9090"
     networks:
