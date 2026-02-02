@@ -21,6 +21,13 @@ def _(mo):
     ## 🎯 Objectif du Notebook
 
     Ce notebook construit un **pipeline ML complet** pour prédire les mouvements du marché EUR/USD.
+
+    ### 💡 Concept Simple
+    ```
+    Question : "Le prix EUR/USD va-t-il monter, descendre, ou rester neutre dans la prochaine heure ?"
+    Réponse du modèle : Probabilités pour chaque direction (ex: 60% LONG, 30% NEUTRAL, 10% SHORT)
+    ```
+
     Le modèle prédit 3 classes de signaux de trading:
 
     | Classe | Signal | Action | Description |
@@ -29,7 +36,7 @@ def _(mo):
     | 1 | **NEUTRAL** | Attendre | Pas de mouvement clair → Ne pas trader |
     | 2 | **LONG** | Acheter | Le prix va monter → Ouvrir une position acheteuse |
 
-    ## 📋 Pipeline Complet
+    ## 📋 Pipeline Complet (12 Étapes)
 
     | Étape | Description | Pourquoi c'est important |
     |-------|-------------|--------------------------|
@@ -53,6 +60,23 @@ def _(mo):
     - **Balanced Accuracy** : Métrique principale car les classes sont déséquilibrées
     - **Overfitting** : Surveillé via la différence train/test (< 10% = OK)
     - **Probabilités** : On utilise les probas, pas juste argmax, pour filtrer les trades
+
+    ---
+
+    ## 🎓 Pour les Débutants : Qu'est-ce que ce notebook fait ?
+
+    **En 3 phrases simples :**
+    1. 📊 On charge des données historiques du marché EUR/USD (prix, indicateurs techniques, indices macro)
+    2. 🤖 On entraîne un modèle ML (LightGBM) à prédire si le prix va monter/descendre/rester neutre
+    3. ✅ On vérifie que le modèle est fiable (métriques, backtesting, interprétabilité)
+
+    **Résultat final :**
+    - Un modèle sauvegardé dans MLflow
+    - Des probabilités calibrées pour chaque signal de trading
+    - Des seuils optimaux pour filtrer les meilleurs trades
+    - Une compréhension des features importantes (SHAP)
+
+    💡 **Astuce** : Vous pouvez simplement "Run All" et suivre les explications cellule par cellule.
     """)
     return
 
@@ -594,6 +618,19 @@ def _(mo):
     - **Adaptative** : Zone neutre plus large en marché volatil, plus étroite en marché calme
     - **Réaliste** : Ne trade pas sur du bruit
     - **Meilleur modèle** : Labels plus propres = meilleure qualité d'apprentissage
+
+    ---
+
+    ## 📝 En Résumé (Pour les Débutants)
+
+    **Imaginez que vous regardez le prix actuel et demandez : "Que va-t-il se passer dans 1h ?"**
+
+    - Si le prix monte beaucoup (plus que la volatilité normale) → Label **LONG** ✅
+    - Si le prix descend beaucoup (plus que la volatilité normale) → Label **SHORT** ✅
+    - Si le prix bouge peu (dans la zone de bruit) → Label **NEUTRAL** ⏸️
+
+    **Pourquoi c'est important ?**
+    Ces labels sont ce que le modèle va apprendre à prédire. Des bons labels = bon modèle !
     """)
     return
 
@@ -2012,6 +2049,26 @@ def _(mo):
     - Moins de trades mais plus précis
     - Sharpe Ratio ↑
     - Drawdown ↓
+
+    ---
+
+    ## 📝 En Résumé (Pour les Débutants)
+
+    **Le backtesting répond à la question : "Le modèle aurait-il gagné de l'argent ?"**
+
+    **Comment ça marche :**
+    1. Le modèle prédit des probabilités pour chaque bougie de données historiques
+    2. On décide de trader uniquement si la confiance est assez haute (ex: >60%)
+    3. On simule les trades : achats, ventes, frais de transaction
+    4. On calcule le profit total, le win rate, le drawdown, etc.
+
+    **Métriques importantes :**
+    - **Total Return** : +10% = le modèle aurait gagné 10% sur la période
+    - **Win Rate** : 55% = 55% des trades sont gagnants
+    - **Sharpe Ratio** : >1 = bon, >2 = excellent
+    - **Max Drawdown** : -15% = pire perte depuis un pic
+
+    💡 **Astuce** : Ajustez les seuils avec les sliders pour voir l'impact sur la rentabilité !
     """)
     return
 
@@ -2327,6 +2384,30 @@ def _(mo):
     - ❌ `future_return` dans le top → BUG CRITIQUE (triche!)
     - ❌ Features non-intuitives dans le top → Investiguer
     - ✅ Mix de momentum, tendance, volatilité → Modèle équilibré
+
+    ---
+
+    ## 📝 En Résumé (Pour les Débutants)
+
+    **SHAP répond à la question : "POURQUOI le modèle a prédit ça ?"**
+
+    **Exemple concret :**
+    ```
+    Le modèle prédit LONG avec 65% de confiance
+
+    Pourquoi ?
+    ✅ RSI = 65 (haussier) → +15% vers LONG
+    ✅ Momentum positif → +10% vers LONG
+    ❌ MA5 < MA20 (baissier) → -5% vers SHORT
+    ✅ VIX bas (risque faible) → +5% vers LONG
+    -------------------------------------------
+    Résultat final : LONG à 65%
+    ```
+
+    **Pourquoi c'est OBLIGATOIRE ?**
+    - Vérifier que le modèle ne "triche" pas (pas de data leakage)
+    - Comprendre quelles variables sont importantes
+    - Avoir confiance dans les prédictions du modèle
     """)
     return
 
@@ -2754,6 +2835,21 @@ def _(mo):
     - La calibration est faite sur le **validation set** (pas le test set)
     - Les probabilités calibrées seront utilisées pour le backtesting
     - Le modèle original est conservé, on ajoute juste une couche de calibration
+
+    ---
+
+    ## 📝 En Résumé (Pour les Débutants)
+
+    **Le problème :**
+    Le modèle dit "70% de chance que ce soit LONG", mais en réalité c'est plutôt 60%. Le modèle est **trop confiant**.
+
+    **La solution : Calibration**
+    On corrige les probabilités pour qu'elles reflètent mieux la réalité :
+    - Avant calibration : Le modèle dit 70% → En réalité c'est 60% ❌
+    - Après calibration : Le modèle dit 60% → En réalité c'est 60% ✅
+
+    **Pourquoi c'est important pour le trading ?**
+    Si on utilise des seuils de probabilité (ex: "trader uniquement si P > 65%"), on veut que ces probabilités soient fiables !
     """)
     return
 
@@ -3199,6 +3295,27 @@ def _(mo):
     - **Paramètres**: horizon, volatility_multiplier, seuils, etc.
     - **Métriques**: balanced_accuracy, macro_f1, Sharpe, win_rate, etc.
     - **Artefacts**: Graphiques (confusion matrix, SHAP, calibration, P&L)
+
+    ---
+
+    ## 📝 En Résumé (Pour les Débutants)
+
+    **MLflow = "GitHub pour les modèles ML"**
+
+    **Pourquoi sauvegarder ?**
+    - 📌 **Versioning** : Garder un historique de tous vos essais (comme Git)
+    - 🔄 **Comparaison** : Comparer facilement "Modèle v1 vs v2 vs v3"
+    - 🚀 **Déploiement** : Charger le modèle en production facilement
+    - 📊 **Reproductibilité** : Retrouver exactement les paramètres utilisés
+
+    **Interface web MLflow :**
+    Allez sur http://localhost:5000 pour voir :
+    - Liste de tous vos runs d'entraînement
+    - Comparaison des métriques entre runs
+    - Graphiques sauvegardés (SHAP, confusion matrix, etc.)
+    - Télécharger le modèle pour l'utiliser ailleurs
+
+    💡 **Astuce** : Donnez un nom descriptif à votre run pour vous y retrouver !
     """)
     return
 

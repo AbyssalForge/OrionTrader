@@ -3,13 +3,18 @@ requests
 apache-airflow-providers-postgres
 apache-airflow
 hvac
-Pyro5
 alpha_vantage
 pyarrow
 feedparser
 sqlalchemy
 psycopg2-binary
 msgpack
+
+# Web Scraping dependencies (Wikipedia indices)
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+html5lib>=1.1
+bs4
 
 # ML Training dependencies
 numpy

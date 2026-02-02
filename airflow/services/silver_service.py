@@ -15,18 +15,37 @@ import numpy as np
 
 def transform_mt5_features(mt5_parquet: str) -> str:
     """
-    Transforme les données MT5 uniquement
+    Transforme les données Forex Intraday 15m (Yahoo Finance)
+    Note: Anciennement MT5, maintenant Yahoo Finance 15m
 
     Args:
-        mt5_parquet: Chemin du fichier MT5 brut
+        mt5_parquet: Chemin du fichier EUR/USD 15m brut (Yahoo)
 
     Returns:
         str: Chemin du fichier .parquet transformé
     """
-    print("[SILVER/MT5] Transformation MT5...")
+    print("[SILVER/FOREX_INTRADAY] Transformation EUR/USD 15m (Yahoo)...")
 
-    # Charger MT5
+    # Charger les données
     df = pd.read_parquet(mt5_parquet)
+
+    # Gérer les fichiers vides (quand Yahoo n'a pas de données intraday)
+    if len(df) == 0:
+        print(f"[SILVER/FOREX_INTRADAY] ⚠️  Aucune donnée intraday disponible")
+        print(f"[SILVER/FOREX_INTRADAY] ℹ️  Yahoo limite les données 15m à ~7 jours")
+        print(f"[SILVER/FOREX_INTRADAY] ℹ️  Création fichier vide pour compatibilité")
+
+        # Créer un DataFrame vide avec la structure attendue
+        empty_df = pd.DataFrame(columns=['open', 'high', 'low', 'close', 'volume'])
+        empty_df.index.name = 'time'
+
+        # Sauvegarde
+        output_path = "data/processed/forex_intraday_15m_features.parquet"
+        os.makedirs("data/processed", exist_ok=True)
+        empty_df.to_parquet(output_path)
+
+        print(f"[SILVER/FOREX_INTRADAY] OK: 0 lignes (fichier vide) -> {output_path}")
+        return output_path
 
     if 'time' not in df.columns:
         df = df.reset_index()
@@ -34,34 +53,39 @@ def transform_mt5_features(mt5_parquet: str) -> str:
     df['time'] = pd.to_datetime(df['time'], utc=True)
     df = df.set_index('time').sort_index()
 
-    print(f"[SILVER/MT5]   Shape brute: {df.shape}")
-    print(f"[SILVER/MT5]   Période: {df.index.min()} -> {df.index.max()}")
+    print(f"[SILVER/FOREX_INTRADAY]   Shape brute: {df.shape}")
+    print(f"[SILVER/FOREX_INTRADAY]   Période: {df.index.min()} -> {df.index.max()}")
 
-    # Feature engineering MT5
+    # Feature engineering
     df = _add_mt5_features(df)
 
     # Nettoyage intelligent (ne forward-fill QUE les colonnes de prix)
     df = df.dropna(subset=['close', 'open', 'high', 'low'])
 
-    # Forward-fill uniquement les colonnes exogènes (OHLC + tick_volume)
-    price_cols = ['open', 'high', 'low', 'close', 'tick_volume']
+    # Forward-fill uniquement les colonnes exogènes (OHLC + volume)
+    # Yahoo a 'volume', MT5 avait 'tick_volume'
+    volume_col = 'volume' if 'volume' in df.columns else 'tick_volume'
+    price_cols = ['open', 'high', 'low', 'close']
+    if volume_col in df.columns:
+        price_cols.append(volume_col)
+
     df[price_cols] = df[price_cols].ffill()
 
     # Les features dérivées ne sont PAS forward-fillées pour éviter le lissage artificiel
     # Elles gardent leurs NaN naturels qui seront gérés plus tard
 
     # Sauvegarde
-    output_path = "data/processed/mt5_features.parquet"
+    output_path = "data/processed/forex_intraday_15m_features.parquet"
     os.makedirs("data/processed", exist_ok=True)
     df.to_parquet(output_path)
 
-    print(f"[SILVER/MT5] OK: {len(df)} lignes -> {output_path}")
+    print(f"[SILVER/FOREX_INTRADAY] OK: {len(df)} lignes -> {output_path}")
     return output_path
 
 
 def _add_mt5_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Ajoute features microstructure MT5"""
-    print("[SILVER/MT5] Feature engineering MT5...")
+    """Ajoute features pour données forex intraday (Yahoo Finance 15m)"""
+    print("[SILVER/FOREX_INTRADAY] Feature engineering forex 15m...")
 
     # Variations de prix
     df['close_diff'] = df['close'].diff()
@@ -534,3 +558,128 @@ def _calculate_event_window(df_snapshot: pd.DataFrame, df_merged: pd.DataFrame) 
         df_snapshot['event_window_active'] = False
 
     return df_snapshot
+
+
+# ============================================================================
+# TRANSFORMATION 5/5 - WIKIPEDIA INDICES
+# ============================================================================
+
+def transform_wikipedia_features(wikipedia_parquets: dict) -> str:
+    """
+    Transforme et consolide les données Wikipedia des indices boursiers
+
+    Args:
+        wikipedia_parquets: Dict {index_key: chemin_fichier}
+
+    Returns:
+        str: Chemin du fichier .parquet consolidé
+    """
+    print("[SILVER/WIKIPEDIA] Transformation Wikipedia...")
+
+    if not wikipedia_parquets:
+        print("[SILVER/WIKIPEDIA] ❌ Aucun fichier à transformer")
+        return None
+
+    # Charger et consolider tous les indices
+    all_indices = []
+
+    for index_key, file_path in wikipedia_parquets.items():
+        df = pd.read_parquet(file_path)
+        all_indices.append(df)
+        print(f"[SILVER/WIKIPEDIA]   - {index_key}: {len(df)} entreprises")
+
+    # Combiner tous les indices
+    df_all = pd.concat(all_indices, ignore_index=True)
+
+    print(f"[SILVER/WIKIPEDIA]   Total avant déduplication: {len(df_all)} lignes")
+
+    # Feature engineering
+    df_all = _add_wikipedia_features(df_all)
+
+    # Déduplication (garder première occurrence de chaque ticker)
+    df_dedup = df_all.drop_duplicates(subset=['ticker'], keep='first')
+
+    print(f"[SILVER/WIKIPEDIA]   Total après déduplication: {len(df_dedup)} tickers uniques")
+
+    # Trier par secteur puis ticker
+    df_dedup = df_dedup.sort_values(['sector', 'ticker'])
+
+    # Sauvegarde
+    output_path = "data/processed/wikipedia_indices.parquet"
+    os.makedirs("data/processed", exist_ok=True)
+    df_dedup.to_parquet(output_path, index=False)
+
+    print(f"[SILVER/WIKIPEDIA] OK: {len(df_dedup)} tickers -> {output_path}")
+
+    # Afficher distribution par secteur
+    print("[SILVER/WIKIPEDIA] Répartition par secteur:")
+    sector_counts = df_dedup['sector'].value_counts().head(10)
+    for sector, count in sector_counts.items():
+        print(f"[SILVER/WIKIPEDIA]   - {sector}: {count} entreprises")
+
+    return output_path
+
+
+def _add_wikipedia_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Ajoute des features aux données Wikipedia"""
+    print("[SILVER/WIKIPEDIA] Feature engineering...")
+
+    # Nettoyer les tickers
+    if 'ticker' in df.columns:
+        df['ticker'] = df['ticker'].str.upper().str.strip()
+        # Supprimer les références [1], [2], etc.
+        df['ticker'] = df['ticker'].str.replace(r'\[\d+\]', '', regex=True)
+        # Supprimer tout après un espace ou une virgule
+        df['ticker'] = df['ticker'].str.split(r'[\s,]').str[0]
+
+    # Nettoyer les secteurs
+    if 'sector' in df.columns:
+        df['sector'] = df['sector'].str.strip()
+        # Standardiser certains noms de secteurs
+        sector_mapping = {
+            'Information Technology': 'Technology',
+            'Consumer Discretionary': 'Consumer Cyclical',
+            'Consumer Staples': 'Consumer Defensive',
+            'Communication Services': 'Communication',
+            'Health Care': 'Healthcare'
+        }
+        df['sector'] = df['sector'].replace(sector_mapping)
+
+    # Nettoyer les noms d'entreprises
+    if 'company_name' in df.columns:
+        df['company_name'] = df['company_name'].str.strip()
+
+    # Catégoriser par pays
+    if 'country' in df.columns:
+        df['country'] = df['country'].str.strip()
+
+        # Créer une colonne region
+        region_mapping = {
+            'USA': 'North America',
+            'France': 'Europe',
+            'Germany': 'Europe',
+            'UK': 'Europe',
+            'United Kingdom': 'Europe',
+            'Netherlands': 'Europe',
+            'Ireland': 'Europe',
+            'Switzerland': 'Europe',
+            'Spain': 'Europe',
+            'Italy': 'Europe'
+        }
+        df['region'] = df['country'].map(region_mapping).fillna('Other')
+
+    # Créer un identifiant unique
+    if 'ticker' in df.columns and 'company_name' in df.columns:
+        df['ticker_company'] = df['ticker'] + ' - ' + df['company_name']
+
+    # Indicateur multi-indices (entreprise présente dans plusieurs indices)
+    if 'index_key' in df.columns:
+        # Compter le nombre d'indices par ticker
+        ticker_counts = df.groupby('ticker')['index_key'].nunique().to_dict()
+        df['num_indices'] = df['ticker'].map(ticker_counts)
+        df['is_multi_index'] = df['num_indices'] > 1
+
+    # Timestamp de transformation
+    df['transformed_at'] = datetime.now()
+
+    return df
