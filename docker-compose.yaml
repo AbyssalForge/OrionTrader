@@ -306,7 +306,7 @@ services:
       # FastAPI endpoint
       FASTAPI_URL: http://fastapi:8000
       # FastAPI Authentication Token
-      FASTAPI_API_TOKEN: ${FASTAPI_API_TOKEN}
+      FASTAPI_API_TOKEN: ${FASTAPI_MASTER_TOKEN}
     volumes:
       - ./streamlit:/app:rw  # Hot-reload sur modification code
       - ./airflow/models:/opt/airflow/models:ro  # Accès aux models SQLAlchemy

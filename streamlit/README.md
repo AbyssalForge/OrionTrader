@@ -1,94 +1,87 @@
-# OrionTrader Streamlit Dashboard
+# 📊 OrionTrader - Streamlit Dashboard Simplifié
 
-Dashboard de visualisation en temps réel pour le projet OrionTrader.
+Dashboard MLOps simplifié pour visualiser les données d'indices boursiers et utiliser le modèle de prédiction.
 
 ## 🚀 Fonctionnalités
 
-### Pages principales
+### 🏠 Page d'accueil
+- Vue d'ensemble du projet MLOps
+- Statistiques rapides
+- Accès rapide aux fonctionnalités
+- Documentation intégrée
 
-1. **📈 Prix & Signaux**
-   - Graphique chandelier EUR/USD M15
-   - Signal confidence score en temps réel
-   - Indicateurs de tendance
+### 🏦 Wikipedia Data
+Visualisation des données d'indices boursiers scrapées depuis Wikipedia.
 
-2. **📊 Régimes**
-   - Distribution des régimes de marché (risk_on, risk_off, neutral, volatile)
-   - Distribution des régimes de volatilité (low, normal, high)
-   - Statistiques sur les dernières 1000 bougies
+**Fonctionnalités :**
+- 📊 Statistiques par indice, secteur, pays
+- 🔍 Filtres multiples (indice, secteur, pays)
+- 📈 Visualisations interactives (Plotly)
+- 🔎 Recherche par ticker ou entreprise
+- 📥 Export CSV
+- 🏆 Top entreprises multi-indices
 
-3. **🔍 Analyse**
-   - Opportunités de trading (haute confiance + pas d'event)
-   - Alertes de divergence
-   - Analyse détaillée des signaux
+**Indices disponibles :**
+- CAC 40 (France)
+- S&P 500 (USA)
+- NASDAQ 100 (USA)
+- Dow Jones (USA)
 
-4. **📋 Données brutes**
-   - Table complète des market snapshots
-   - Export CSV
+### 🤖 ML Model
+Interface pour utiliser le modèle de prédiction LightGBM.
 
-### Métriques en temps réel
-
-- **Signal Confidence**: Score de confiance du signal actuel (0.0 - 1.0)
-- **Régime de marché**: risk_on 🟢, risk_off 🔴, neutral ⚪, volatile 🟠
-- **Volatilité**: Régime de volatilité actuel
-- **Event Window**: Indicateur d'event économique à fort impact
+**Fonctionnalités :**
+- 🎯 Prédiction EUR/USD (SHORT/NEUTRAL/LONG)
+- 📊 Probabilités des 3 classes
+- 📈 Visualisation graphique
+- ℹ️ Métriques du modèle
+- 💡 Interprétation et recommandations
 
 ## 🛠️ Architecture
 
-### Connexions
-
 ```
-Streamlit
-  ├─ Database (PostgreSQL) : Lecture directe via SQLAlchemy
-  │   └─ Tables: mt5_eurusd_m15, yahoo_finance_daily, documents_macro, market_snapshot_m15
-  │
-  └─ FastAPI : Requêtes via API REST
-      └─ Endpoints: /health, /market/latest, /signals/*
+Streamlit Dashboard
+  ├─ PostgreSQL : Lecture des données Wikipedia
+  └─ FastAPI : Appels API pour prédictions ML
 ```
-
-### Hot-reload
-
-Le volume Docker monte le code en mode lecture/écriture (`rw`), ce qui permet le **hot-reload automatique** :
-- Modifiez `app.py` ou tout fichier dans `streamlit/`
-- Streamlit détecte les changements et recharge automatiquement
-- Pas besoin de redémarrer le conteneur
 
 ## 📦 Structure
 
 ```
 streamlit/
-├── .streamlit/
-│   └── config.toml          # Configuration Streamlit (thème, port, etc.)
+├── app.py                          # Page d'accueil
+├── pages/
+│   ├── Wikipedia_Data.py           # Données Wikipedia
+│   └── ML_Model.py                 # Modèle ML
 ├── utils/
-│   ├── __init__.py
-│   ├── database.py          # Connexion PostgreSQL via SQLAlchemy
-│   └── api_client.py        # Client pour FastAPI
-├── app.py                   # Application principale
-├── Dockerfile               # Image Docker
-├── requirements.txt         # Dépendances Python
-└── README.md               # Ce fichier
+│   ├── database.py                 # Connexion PostgreSQL
+│   ├── vault_helper.py             # Gestion Vault
+│   └── api_client.py               # Client FastAPI
+├── requirements.txt                # Dépendances
+├── Dockerfile                      # Image Docker
+└── README.md                       # Documentation
 ```
 
 ## 🚀 Démarrage
 
-### Via Docker Compose (recommandé)
+### Via Docker (recommandé)
 
 ```bash
-# Démarrer tous les services
-docker-compose up -d
+# Lancer tout le stack
+docker-compose up streamlit
 
-# Accéder au dashboard
-# http://localhost:8501
+# Accès : http://localhost:8501
 ```
 
-### En local (développement)
+### En local
 
 ```bash
 cd streamlit
 
-# Installer les dépendances
+# Installer dépendances
 pip install -r requirements.txt
 
-# Configurer les variables d'environnement
+# Variables d'environnement
 export POSTGRES_HOST=localhost
 export POSTGRES_PORT=5432
 export POSTGRES_DB=postgres
@@ -104,128 +97,145 @@ streamlit run app.py
 
 ### Variables d'environnement
 
-| Variable | Description | Défaut |
-|----------|-------------|--------|
-| `POSTGRES_HOST` | Host PostgreSQL | `postgres` |
-| `POSTGRES_PORT` | Port PostgreSQL | `5432` |
-| `POSTGRES_DB` | Nom de la DB | `postgres` |
-| `POSTGRES_USER` | User DB | `postgres` |
-| `POSTGRES_PASSWORD` | Password DB | `postgres` |
-| `FASTAPI_URL` | URL de l'API FastAPI | `http://fastapi:8000` |
-| `VAULT_ADDR` | URL de Vault | `http://vault:8200` |
-| `VAULT_TOKEN` | Token Vault | `orion-root-token` |
+#### Base de données
+```bash
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=postgres
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+```
 
-### Port
+#### API FastAPI
+```bash
+FASTAPI_URL=http://fastapi:8000
+FASTAPI_API_TOKEN=your-token
+```
 
-Le dashboard Streamlit est accessible sur le **port 8501** :
-- Local: http://localhost:8501
-- Docker: http://localhost:8501
+#### Vault (optionnel)
+```bash
+VAULT_ADDR=http://vault:8200
+VAULT_TOKEN=your-vault-token
+```
 
 ## 📊 Utilisation
 
 ### Navigation
 
-1. **Sidebar gauche** : Configuration et filtres
-   - Status de connexion (DB + API)
-   - Filtres temporels
-   - Auto-refresh
+1. **🏠 Page d'accueil** : Vue d'ensemble
+2. **🏦 Wikipedia Data** : Explorer les indices
+3. **🤖 ML Model** : Faire des prédictions
 
-2. **Onglets principaux** :
-   - Prix & Signaux : Visualisation des prix et scores
-   - Régimes : Distribution des régimes de marché
-   - Analyse : Opportunités et alertes
-   - Données brutes : Export et consultation
+### Wikipedia Data
 
-### Auto-refresh
+1. Utilisez les filtres (indice, secteur, pays)
+2. Recherchez un ticker spécifique
+3. Explorez les visualisations
+4. Téléchargez en CSV
 
-Cochez "Auto-refresh" dans la sidebar pour actualiser automatiquement le dashboard :
-- Intervalle configurable : 10-300 secondes
-- Défaut : 60 secondes
+### ML Model
 
-### Export de données
+1. Entrez les prix OHLCV
+2. Ajoutez des indicateurs (optionnel)
+3. Cliquez sur "Prédire"
+4. Analysez les résultats
 
-Dans l'onglet "Données brutes", cliquez sur **"📥 Télécharger CSV"** pour exporter les données au format CSV.
-
-## 🐛 Debug
+## 🐛 Débogage
 
 ### Logs
 
 ```bash
-# Voir les logs Streamlit
+# Logs Streamlit
 docker logs -f orion_streamlit
 
-# Logs en temps réel avec suivi des changements
+# Logs en temps réel
 docker logs -f orion_streamlit --tail 50
 ```
 
-### Erreurs courantes
+### Tests
 
-**❌ Database: Déconnectée**
-- Vérifier que PostgreSQL est démarré : `docker ps | grep postgres`
-- Vérifier les credentials dans `.env`
-- Vérifier que le secret Vault `Database` a `POSTGRES_HOST: "postgres"`
+```bash
+# Test connexion DB
+python -c "from utils.database import test_database_connection; print(test_database_connection())"
 
-**❌ API: Erreur connexion**
-- Vérifier que FastAPI est démarré : `docker ps | grep fastapi`
-- Tester l'API manuellement : `curl http://localhost:8000/health`
+# Test API
+curl http://localhost:8000/health
+curl http://localhost:8000/model/info
+```
 
-**🔄 Hot-reload ne fonctionne pas**
-- Vérifier que le volume est bien monté : `docker inspect orion_streamlit | grep Mounts`
-- Vérifier `fileWatcherType = "poll"` dans `.streamlit/config.toml`
-- Redémarrer le conteneur : `docker restart orion_streamlit`
+## 📚 Développement
 
-## 📚 Ressources
+### Ajouter une page
 
-- [Documentation Streamlit](https://docs.streamlit.io/)
-- [Plotly Python](https://plotly.com/python/)
-- [SQLAlchemy ORM](https://docs.sqlalchemy.org/en/20/orm/)
+1. Créer `pages/Ma_Page.py`
+2. Configuration :
+```python
+import streamlit as st
+
+st.set_page_config(
+    page_title="Ma Page - OrionTrader",
+    page_icon="🎯",
+    layout="wide"
+)
+
+st.title("🎯 Ma Page")
+# Votre code...
+```
+
+### Cache des données
+
+```python
+@st.cache_data(ttl=300)  # 5 minutes
+def load_data():
+    # Code...
+    return data
+```
 
 ## 🎨 Personnalisation
 
 ### Thème
 
-Modifiez `.streamlit/config.toml` pour personnaliser le thème :
+Modifier `.streamlit/config.toml` :
 
 ```toml
 [theme]
-primaryColor = "#FF4B4B"        # Couleur principale
-backgroundColor = "#0E1117"      # Fond de page
-secondaryBackgroundColor = "#262730"  # Fond secondaire
-textColor = "#FAFAFA"           # Couleur du texte
-font = "sans serif"             # Police
+primaryColor = "#FF4B4B"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+font = "sans serif"
 ```
 
-### Ajout de pages
+## 📝 Notes importantes
 
-Créez de nouvelles pages dans `streamlit/pages/` :
+1. **Données d'exemple** : Affichées si DB non disponible
+2. **API requise** : FastAPI doit être accessible pour le modèle ML
+3. **Cache** : Données cachées 5 minutes
+4. **Sécurité** : Utiliser Vault ou .env pour credentials
 
+## 🚀 Déploiement Production
+
+```yaml
+# docker-compose.yml
+services:
+  streamlit:
+    build: ./streamlit
+    ports:
+      - "8501:8501"
+    environment:
+      - POSTGRES_HOST=postgres
+      - FASTAPI_URL=http://fastapi:8000
+    depends_on:
+      - postgres
+      - fastapi
 ```
-streamlit/
-├── app.py                    # Page principale (🏠 Home)
-└── pages/
-    ├── 1_📈_Trading.py      # Page trading
-    ├── 2_📊_Analytics.py    # Page analytics
-    └── 3_⚙️_Settings.py     # Page settings
-```
 
-Streamlit détecte automatiquement les fichiers dans `pages/` et les ajoute à la navigation.
+## 📖 Ressources
 
-## 🔐 Sécurité
+- [Streamlit Docs](https://docs.streamlit.io/)
+- [Plotly Python](https://plotly.com/python/)
+- [SQLAlchemy](https://docs.sqlalchemy.org/)
 
-⚠️ **Important** : Ce dashboard est configuré pour un environnement de développement local.
+---
 
-Pour la production :
-- Activer l'authentification Streamlit
-- Utiliser HTTPS avec certificats SSL
-- Restreindre les accès réseau
-- Sécuriser les variables d'environnement
-- Activer les CORS sur FastAPI
-
-## 📝 TODO
-
-- [ ] Ajouter authentification utilisateur
-- [ ] Implémenter des alertes temps réel (WebSocket)
-- [ ] Ajouter graphiques de corrélation multi-assets
-- [ ] Créer page de backtesting
-- [ ] Intégration MLflow pour suivi des modèles
-- [ ] Export automatique vers Excel avec formatage
+⚠️ **Disclaimer** : Application éducative. Les prédictions ne sont pas des conseils financiers.

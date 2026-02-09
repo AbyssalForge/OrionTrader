@@ -3580,7 +3580,7 @@ def _(
 
                     # Aussi essayer la méthode MLflow native avec enregistrement dans le Model Registry
                     try:
-                        model_name = "OrionTrader_LightGBM_Classifier"
+                        model_name = "classification_model"
                         mlflow.lightgbm.log_model(
                             best_model_optimized,
                             artifact_path="model_native",

@@ -127,6 +127,20 @@ def get_db_context():
         db.close()
 
 
+def get_db_connection():
+    """
+    Retourne une connexion raw SQLAlchemy (pour pd.read_sql)
+
+    Returns:
+        Connection SQLAlchemy
+    """
+    try:
+        return engine.connect()
+    except Exception as e:
+        print(f"[ERROR] Could not create database connection: {e}")
+        return None
+
+
 def test_database_connection() -> bool:
     """
     Teste la connexion à la base de données
