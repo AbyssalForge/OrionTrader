@@ -24,11 +24,13 @@ on:
         options:
           - staging
           - production
+  push:
+    branches: [ main, E3_vrais ]
+  pull_request:
+    branches: [ main, E3_vrais ]
+
 
   # Déclenchement automatique sur tag de version
-  push:
-    tags:
-      - 'v*.*.*'
 
 env:
   REGISTRY: ghcr.io
