@@ -7,7 +7,7 @@ from datetime import datetime
 import pandas as pd
 
 from utils.db_helper import get_db_session
-from models import MT5EURUSDM15, YahooFinanceDaily, DocumentsMacro, MarketSnapshotM15
+from models import MT5EURUSDM15, YahooFinanceDaily, DocumentsMacro, MarketSnapshotM15, WikipediaIndices
 
 
 # ============================================================================
@@ -318,6 +318,87 @@ def load_market_snapshot_to_db(snapshot_parquet: str, pipeline_run_id: str = Non
     except Exception as e:
         session.rollback()
         print(f"[GOLD/SNAPSHOT] ERREUR: {e}")
+        raise
+    finally:
+        session.close()
+        
+def load_wikipedia_to_db(wikipedia_parquet: str, pipeline_run_id: str = None):
+    """
+    Charge les données Wikipedia vers la table wikipedia_indices
+
+    Args:
+        wikipedia_parquet: Chemin du fichier .parquet Wikipedia
+        pipeline_run_id: ID du run pipeline
+
+    Returns:
+        dict: Résultat avec status, rows
+    """
+    print(f"[GOLD/WIKIPEDIA] Chargement Wikipedia depuis {wikipedia_parquet}...")
+
+    if not wikipedia_parquet:
+        print("[GOLD/WIKIPEDIA] ❌ Aucun fichier fourni")
+        return {
+            'status': 'error',
+            'table': 'wikipedia_indices',
+            'rows': 0,
+            'message': 'No parquet file provided'
+        }
+
+    df = pd.read_parquet(wikipedia_parquet)
+
+    session = get_db_session()
+    if not pipeline_run_id:
+        pipeline_run_id = datetime.now().isoformat()
+
+    try:
+        inserted = 0
+
+        for _, row in df.iterrows():
+            record = WikipediaIndices(
+                ticker=row.get('ticker'),
+                company_name=row.get('company_name'),
+                sector=row.get('sector'),
+                country=row.get('country'),
+                region=row.get('region'),
+                index_name=row.get('index_name'),
+                index_key=row.get('index_key'),
+                num_indices=row.get('num_indices'),
+                is_multi_index=row.get('is_multi_index', False),
+                ticker_company=row.get('ticker_company'),
+                scraped_at=pd.to_datetime(row.get('scraped_at')) if row.get('scraped_at') else None,
+                transformed_at=pd.to_datetime(row.get('transformed_at')) if row.get('transformed_at') else None,
+                pipeline_run_id=pipeline_run_id
+            )
+            session.merge(record)  # Merge pour gérer les duplicates (upsert)
+            inserted += 1
+
+            if inserted % 100 == 0:
+                session.commit()
+                print(f"[GOLD/WIKIPEDIA]   {inserted} tickers...")
+
+        session.commit()
+        print(f"[GOLD/WIKIPEDIA] OK: {inserted} tickers chargés")
+
+        # Statistiques
+        total_sectors = df['sector'].nunique() if 'sector' in df.columns else 0
+        total_countries = df['country'].nunique() if 'country' in df.columns else 0
+
+        print(f"[GOLD/WIKIPEDIA] Statistiques:")
+        print(f"[GOLD/WIKIPEDIA]   - Secteurs uniques: {total_sectors}")
+        print(f"[GOLD/WIKIPEDIA]   - Pays uniques: {total_countries}")
+
+        return {
+            'status': 'success',
+            'table': 'wikipedia_indices',
+            'rows': inserted,
+            'sectors': total_sectors,
+            'countries': total_countries,
+            'pipeline_run_id': pipeline_run_id
+        }
+
+    except Exception as e:
+        session.rollback()
+        print(f"[GOLD/WIKIPEDIA] ERREUR: {e}")
         raise
     finally:
         session.close()

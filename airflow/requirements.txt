@@ -36,3 +36,5 @@ mlflow
 
 #wandb
 #alibi-detect
+
+bs4

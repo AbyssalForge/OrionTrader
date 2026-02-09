@@ -14,6 +14,7 @@ import pandas as pd
 from clients.yahoo_client import YahooFinanceClient
 from clients.eurostat_client import EurostatClient
 from utils.mt5_server import import_data
+from services.scraping_service import scrape_all_indices, save_scraped_data_to_parquet, get_scraping_stats
 
 def extract_mt5_data(start, end):
     """
@@ -144,3 +145,51 @@ def extract_eurostat_data(start=None):
     print(f"[BRONZE/DOCUMENTS]   - Events: {paths.get('events')}")
 
     return paths
+
+def extract_wikipedia_indices():
+    """
+    Scrape les indices boursiers depuis Wikipedia et sauvegarde en .parquet
+
+    Sources:
+    - CAC 40 (France)
+    - S&P 500 (USA)
+    - NASDAQ 100 (USA)
+    - Dow Jones Industrial Average (USA)
+
+    Returns:
+        dict: Dictionnaire {index_key: chemin_fichier}
+    """
+    base_path = "data/wikipedia"
+    os.makedirs(base_path, exist_ok=True)
+
+    print("[BRONZE/WIKIPEDIA] ==================== DÉBUT SCRAPING ====================")
+
+    # Scraper tous les indices
+    indices_data = scrape_all_indices()
+
+    if not indices_data:
+        print("[BRONZE/WIKIPEDIA] ❌ Aucune donnée scrapée")
+        return {}
+
+    # Sauvegarder en parquet
+    file_paths = save_scraped_data_to_parquet(indices_data, base_path)
+
+    # Afficher statistiques
+    stats = get_scraping_stats(indices_data)
+    print(f"[BRONZE/WIKIPEDIA] ✅ Statistiques:")
+    print(f"[BRONZE/WIKIPEDIA]   - Indices: {stats['total_indices']}")
+    print(f"[BRONZE/WIKIPEDIA]   - Entreprises: {stats['total_companies']}")
+    print(f"[BRONZE/WIKIPEDIA]   - Tickers uniques: {stats['unique_tickers']}")
+
+    print(f"[BRONZE/WIKIPEDIA] Répartition par indice:")
+    for idx, count in stats['by_index'].items():
+        print(f"[BRONZE/WIKIPEDIA]   - {idx}: {count} entreprises")
+
+    print(f"[BRONZE/WIKIPEDIA] Top 5 secteurs:")
+    for sector, count in list(stats['by_sector'].items())[:5]:
+        print(f"[BRONZE/WIKIPEDIA]   - {sector}: {count} entreprises")
+
+    print(f"[BRONZE/WIKIPEDIA] ==================== FIN SCRAPING ====================")
+
+    return file_paths
+

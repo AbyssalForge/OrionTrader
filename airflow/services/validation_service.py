@@ -213,3 +213,51 @@ def send_discord_notification(validation_result: dict, webhook_url: str) -> dict
             "message": error_msg,
             "error": str(e)
         }
+
+def send_wikipedia_notification(validation_result: dict, webhook_url: str) -> dict:
+    """
+    Envoie une notification Discord pour le scraping Wikipedia
+
+    Args:
+        validation_result: Résultat de la validation Wikipedia
+        webhook_url: URL du webhook Discord
+
+    Returns:
+        dict: Résultat de l'envoi
+    """
+    print("[NOTIFY] Envoi notification Discord (Wikipedia)...")
+
+    # Construction message
+    status = validation_result.get("status", "unknown")
+    emoji = "✅" if status == "success" else "❌"
+
+    message = f"{emoji} **Pipeline Scraping Wikipedia - Terminé**\n\n"
+    message += f"**Statut:** {'Réussi' if status == 'success' else 'Échoué'}\n"
+    message += f"**Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
+
+    if validation_result.get('wikipedia_ok'):
+        rows = validation_result.get('wikipedia_rows', 0)
+        message += "**📊 Données scrapées:**\n"
+        message += f"• Indices: CAC 40, S&P 500, NASDAQ 100, DJIA\n"
+        message += f"• Tickers uniques: {rows:,}\n"
+        message += f"• Attendu: ~670 tickers\n\n"
+
+        if validation_result.get('quality') == 'excellent':
+            message += "**✅ Qualité:** Excellente\n"
+        elif validation_result.get('warning'):
+            message += f"**⚠️ Attention:** {validation_result.get('warning')}\n"
+
+    if validation_result.get("error"):
+        message += f"\n**❌ Erreur:**\n• {validation_result['error']}\n"
+
+    message += "\n**🌐 Source:** Wikipedia (scraping)\n"
+
+    # Envoi Discord
+    try:
+        response = requests.post(webhook_url, json={"content": message}, timeout=10)
+        response.raise_for_status()
+        print(f"[NOTIFY] ✓ Notification Discord envoyée (Wikipedia)")
+        return {"status": "success", "message": "Notification envoyée"}
+    except Exception as e:
+        print(f"[NOTIFY] ⚠️ Erreur: {str(e)}")
+        return {"status": "failed", "error": str(e)}
