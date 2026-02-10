@@ -3587,6 +3587,14 @@ def _(
                             registered_model_name=model_name
                         )
                         print(f"   ✅ Modèle enregistré dans Model Registry: {model_name}")
+
+                        # Promouvoir en production via alias (MLflow 3.x)
+                        from mlflow.tracking import MlflowClient as _MlflowClient
+                        _client = _MlflowClient()
+                        _versions = _client.search_model_versions(f"name='{model_name}'")
+                        _latest = sorted(_versions, key=lambda v: int(v.version), reverse=True)[0]
+                        _client.set_registered_model_alias(model_name, "production", _latest.version)
+                        print(f"   ✅ Alias 'production' → v{_latest.version}")
                     except Exception as e2:
                         print(f"   ⚠️ Enregistrement Model Registry échoué: {e2}")
                         # Si l'enregistrement échoue, essayer sans le registered_model_name

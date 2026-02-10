@@ -78,20 +78,17 @@ jobs:
           print(f"Validation du modèle: {model_name} (stage: {model_stage})")
 
           try:
-              # Récupérer les versions du modèle dans le stage spécifié
-              versions = client.search_model_versions(f"name='{model_name}'")
-              stage_versions = [v for v in versions if v.current_stage == model_stage]
-
-              if not stage_versions:
-                  print(f"❌ Aucune version du modèle '{model_name}' en stage '{model_stage}'")
+              # Récupérer la version du modèle via alias (MLflow 3.x)
+              alias = model_stage.lower()  # "Production" -> "production"
+              try:
+                  latest_version = client.get_model_version_by_alias(model_name, alias)
+              except Exception as alias_err:
+                  print(f"❌ Aucune version du modèle '{model_name}' avec l'alias '{alias}': {alias_err}")
                   sys.exit(1)
 
-              # Prendre la version la plus récente
-              latest_version = sorted(stage_versions, key=lambda x: int(x.version), reverse=True)[0]
-
-              print(f"✅ Modèle trouvé: version {latest_version.version}")
+              print(f"✅ Modèle trouvé via alias '{alias}': version {latest_version.version}")
               print(f"   - Run ID: {latest_version.run_id}")
-              print(f"   - Stage: {latest_version.current_stage}")
+              print(f"   - Alias: {alias}")
 
               # Récupérer les métriques du run
               run = client.get_run(latest_version.run_id)
@@ -109,7 +106,7 @@ jobs:
                           print(f"⚠️  {metric} ({value:.4f}) est inférieur au seuil minimal ({min_threshold})")
 
               # Exporter les infos pour les étapes suivantes
-              model_uri = f"models:/{model_name}/{model_stage}"
+              model_uri = f"models:/{model_name}@{alias}"
               with open(os.getenv('GITHUB_OUTPUT'), 'a') as f:
                   f.write(f"version={latest_version.version}\n")
                   f.write(f"uri={model_uri}\n")
