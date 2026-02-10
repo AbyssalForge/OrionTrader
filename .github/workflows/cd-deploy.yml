@@ -58,12 +58,13 @@ jobs:
       - name: Valider le modèle MLflow
         id: get-model
         continue-on-error: true
+        shell: python
         env:
           MODEL_NAME: ${{ inputs.model_name || 'classification_model' }}
           MODEL_STAGE: ${{ inputs.model_stage || 'Production' }}
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI || 'http://localhost:5000' }}
+          GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
         run: |
-          python - <<EOF
           import os
           import mlflow
           from mlflow.tracking import MlflowClient
@@ -78,39 +79,37 @@ jobs:
           print(f"Validation du modèle: {model_name} (alias: {alias})")
           print(f"MLflow URI: {os.getenv('MLFLOW_TRACKING_URI')}")
 
-          github_output = os.getenv('GITHUB_OUTPUT', '/dev/null')
+          github_output = os.getenv('GITHUB_OUTPUT', 'NUL')
 
           try:
               latest_version = client.get_model_version_by_alias(model_name, alias)
 
-              print(f"✅ Modèle trouvé via alias '{alias}': version {latest_version.version}")
+              print(f"Modèle trouvé via alias '{alias}': version {latest_version.version}")
               print(f"   - Run ID: {latest_version.run_id}")
 
-              # Métriques du run
               run = client.get_run(latest_version.run_id)
               metrics = run.data.metrics
-              print(f"\nMétriques du modèle:")
+              print("Métriques du modèle:")
               for metric in ['balanced_accuracy', 'f1_score', 'roc_auc']:
                   if metric in metrics:
                       value = metrics[metric]
                       print(f"   - {metric}: {value:.4f}")
                       if value < 0.70:
-                          print(f"⚠️  {metric} ({value:.4f}) est inférieur au seuil minimal (0.70)")
+                          print(f"  {metric} ({value:.4f}) est inférieur au seuil minimal (0.70)")
 
               model_uri = f"models:/{model_name}@{alias}"
               with open(github_output, 'a') as f:
                   f.write(f"version={latest_version.version}\n")
                   f.write(f"uri={model_uri}\n")
 
-              print(f"\n✅ Validation réussie du modèle {model_name} v{latest_version.version}")
+              print(f"Validation réussie du modèle {model_name} v{latest_version.version}")
 
           except Exception as e:
-              print(f"⚠️ MLflow non accessible en CI (normal si pas de serveur distant): {e}")
-              print("   → Utilisation d'une version mock pour le pipeline CD")
+              print(f"MLflow non accessible en CI: {e}")
+              print("Utilisation d'une version mock pour le pipeline CD")
               with open(github_output, 'a') as f:
                   f.write("version=ci-mock\n")
                   f.write(f"uri=models:/{model_name}@{alias}\n")
-          EOF
 
   test-service:
     name: Tests du Service FastAPI
