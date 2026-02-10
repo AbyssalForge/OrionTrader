@@ -217,28 +217,42 @@ jobs:
             echo "Répertoire: $DEPLOY_DIR"
 
             # Cloner le repo si absent, sinon pull
-            if [ ! -d "$DEPLOY_DIR/.git" ]; then
-              echo "Clonage du dépôt..."
-              git clone https://github.com/${{ github.repository }}.git "$DEPLOY_DIR"
-            else
+            if [ -d "$DEPLOY_DIR/.git" ]; then
               echo "Mise à jour du dépôt..."
               cd "$DEPLOY_DIR"
               git fetch origin
               git checkout ${{ github.ref_name }}
               git pull origin ${{ github.ref_name }}
+            else
+              echo "Clonage du dépôt..."
+              # Sauvegarder le .env s'il existe
+              if [ -f "$DEPLOY_DIR/.env" ]; then
+                cp "$DEPLOY_DIR/.env" /tmp/.env.backup
+                echo ".env sauvegardé"
+              fi
+              rm -rf "$DEPLOY_DIR"
+              git clone https://github.com/${{ github.repository }}.git "$DEPLOY_DIR"
+              cd "$DEPLOY_DIR"
+              git checkout ${{ github.ref_name }}
+              # Restaurer le .env
+              if [ -f /tmp/.env.backup ]; then
+                cp /tmp/.env.backup "$DEPLOY_DIR/.env"
+                rm -f /tmp/.env.backup
+                echo ".env restauré"
+              fi
             fi
 
             cd "$DEPLOY_DIR"
 
             echo "=== Rebuild et redémarrage des services ==="
-            docker compose -f docker-compose.prod.yml pull --ignore-pull-failures 2>/dev/null || true
-            docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+            sudo docker compose -f docker-compose.prod.yml pull --ignore-pull-failures 2>/dev/null || true
+            sudo docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
 
             echo "=== Nettoyage images inutilisées ==="
-            docker image prune -f
+            sudo docker image prune -f
 
             echo "=== Statut des conteneurs ==="
-            docker compose -f docker-compose.prod.yml ps
+            sudo docker compose -f docker-compose.prod.yml ps
           ENDSSH
 
           # Nettoyage clé SSH
