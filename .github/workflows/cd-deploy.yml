@@ -192,39 +192,73 @@ jobs:
           echo "🏷️  Tags: ${{ steps.meta.outputs.tags }}"
 
   deploy:
-    name: Déploiement
-    runs-on: ubuntu-latest
+    name: Déploiement OVH VPS
+    runs-on: self-hosted
     needs: [validate-model, build-and-push]
     environment: ${{ inputs.environment || 'production' }}
 
     steps:
-      - name: Deploy notification
+      - name: Déployer sur OVH via SSH
+        env:
+          OVH_HOST: ${{ secrets.OVH_HOST }}
+          OVH_USER: ${{ secrets.OVH_USER }}
+          OVH_SSH_KEY: ${{ secrets.OVH_SSH_KEY }}
+          MODEL_VERSION: ${{ needs.validate-model.outputs.model_version }}
+        shell: bash
         run: |
-          echo "Déploiement du modèle en cours..."
-          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          echo "Version: ${{ needs.validate-model.outputs.model_version }}"
-          echo ""
-          echo "Pour déployer l'image sur votre infrastructure:"
-          echo "  docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          echo "  docker run -p 8000:8000 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          echo ""
-          echo "Image disponible sur GitHub Container Registry"
+          # Écrire la clé SSH dans un fichier temporaire
+          echo "$OVH_SSH_KEY" > /tmp/ovh_deploy_key
+          chmod 600 /tmp/ovh_deploy_key
+
+          ssh -o StrictHostKeyChecking=no -i /tmp/ovh_deploy_key "$OVH_USER@$OVH_HOST" << 'ENDSSH'
+            set -e
+
+            DEPLOY_DIR="$HOME/orionTrader"
+
+            echo "=== Déploiement OrionTrader sur OVH ==="
+            echo "Répertoire: $DEPLOY_DIR"
+
+            # Cloner le repo si absent, sinon pull
+            if [ ! -d "$DEPLOY_DIR/.git" ]; then
+              echo "Clonage du dépôt..."
+              git clone https://github.com/${{ github.repository }}.git "$DEPLOY_DIR"
+            else
+              echo "Mise à jour du dépôt..."
+              cd "$DEPLOY_DIR"
+              git fetch origin
+              git checkout ${{ github.ref_name }}
+              git pull origin ${{ github.ref_name }}
+            fi
+
+            cd "$DEPLOY_DIR"
+
+            echo "=== Rebuild et redémarrage des services ==="
+            docker compose -f docker-compose.prod.yml pull --ignore-pull-failures 2>/dev/null || true
+            docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+
+            echo "=== Nettoyage images inutilisées ==="
+            docker image prune -f
+
+            echo "=== Statut des conteneurs ==="
+            docker compose -f docker-compose.prod.yml ps
+          ENDSSH
+
+          # Nettoyage clé SSH
+          rm -f /tmp/ovh_deploy_key
 
       - name: Summary
+        shell: bash
         run: |
-          echo "## Déploiement Réussi" >> $GITHUB_STEP_SUMMARY
+          echo "## Déploiement OVH Réussi" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Détails du Déploiement" >> $GITHUB_STEP_SUMMARY
           echo "- **Modèle**: ${{ inputs.model_name || 'classification_model' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: ${{ needs.validate-model.outputs.model_version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Stage**: ${{ inputs.model_stage || 'Production' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image**: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Serveur**: OVH VPS (via VPN)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dossier**: ~/orionTrader" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Commandes Docker" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "# Pull l'image" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "# Lancer le conteneur" >> $GITHUB_STEP_SUMMARY
-          echo "docker run -p 8000:8000 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "### Services déployés" >> $GITHUB_STEP_SUMMARY
+          echo "- MLflow: http://\<VPS_IP\>:5000" >> $GITHUB_STEP_SUMMARY
+          echo "- FastAPI: http://\<VPS_IP\>:8000" >> $GITHUB_STEP_SUMMARY
+          echo "- Streamlit: http://\<VPS_IP\>:8501" >> $GITHUB_STEP_SUMMARY
