@@ -37,7 +37,7 @@ env:
 jobs:
   validate-model:
     name: Validation du Modèle MLflow
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       model_version: ${{ steps.get-model.outputs.version }}
       model_uri: ${{ steps.get-model.outputs.uri }}
@@ -61,14 +61,14 @@ jobs:
         env:
           MODEL_NAME: ${{ inputs.model_name || 'classification_model' }}
           MODEL_STAGE: ${{ inputs.model_stage || 'Production' }}
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI || 'sqlite:///mlflow/mlflow.db' }}
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI || 'http://localhost:5000' }}
         run: |
           python - <<EOF
           import os
           import mlflow
           from mlflow.tracking import MlflowClient
 
-          mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow/mlflow.db"))
+          mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000"))
           client = MlflowClient()
 
           model_name = os.getenv("MODEL_NAME", "classification_model")
