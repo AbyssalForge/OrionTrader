@@ -120,7 +120,7 @@ services:
     volumes:
       - mlflow-artifacts:/mlflow/mlruns:rw
     ports:
-      - "8000:8000"
+      - "8001:8000"
     networks:
       - oriontrader_network
     restart: always
@@ -141,7 +141,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-trading_data}
       POSTGRES_USER: ${STREAMLIT_DB_USER:-streamlit}
       POSTGRES_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
-      FASTAPI_URL: http://fastapi:8000
+      FASTAPI_URL: http://fastapi:8001
       FASTAPI_API_TOKEN: ${FASTAPI_MASTER_TOKEN}
     ports:
       - "8501:8501"
