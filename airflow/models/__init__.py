@@ -17,6 +17,7 @@ from .MT5EURUSDM15 import MT5EURUSDM15
 from .YahooFinanceDaily import YahooFinanceDaily
 from .DocumentsMacro import DocumentsMacro
 from .MarketSnapshotM15 import MarketSnapshotM15
+from .WikipediaIndices import WikipediaIndices
 
 __all__ = [
     # Base
@@ -31,4 +32,5 @@ __all__ = [
     'YahooFinanceDaily',      # Table 2: Yahoo Finance API (Daily)
     'DocumentsMacro',         # Table 3: Documents économiques (Monthly/Annual)
     'MarketSnapshotM15',      # Table 4: Market snapshot avec features composites
+    'WikipediaIndices',       # Table 5: Wikipedia indices (scraping)
 ]

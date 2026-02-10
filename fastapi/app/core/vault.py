@@ -20,12 +20,10 @@ def get_database_credentials() -> Dict[str, str]:
     Returns:
         Dict avec les credentials PostgreSQL
     """
-    # Si USE_VAULT est désactivé, utiliser directement les env vars
     if not settings.USE_VAULT:
         print("[INFO] Vault disabled, using environment variables")
         return _get_credentials_from_env()
 
-    # Essayer de récupérer depuis Vault
     try:
 
         vault = get_vault()

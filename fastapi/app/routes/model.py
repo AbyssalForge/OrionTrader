@@ -30,11 +30,9 @@ from app.models.api_token import APIToken
 
 router = APIRouter()
 
-# Configuration MLflow
 MLFLOW_TRACKING_URI = "http://mlflow:5000"
 MODEL_NAME = "classification_model"
 
-# Cache du modèle chargé
 _model_cache = {
     "model": None,
     "version": None,
@@ -56,13 +54,11 @@ def get_model(version: Optional[str] = None, stage: Optional[str] = None):
     """
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
-    # Construire l'URI du modèle
     if version:
         model_uri = f"models:/{MODEL_NAME}/{version}"
     elif stage:
         model_uri = f"models:/{MODEL_NAME}/{stage}"
     else:
-        # Par défaut, charger la dernière version
         model_uri = f"models:/{MODEL_NAME}/latest"
 
     try:
@@ -81,21 +77,17 @@ def load_model_with_cache(version: Optional[str] = None, stage: Optional[str] = 
     """
     cache_key = version or stage or "latest"
 
-    # Vérifier si le modèle est déjà en cache
     if _model_cache["model"] is not None and _model_cache["version"] == cache_key:
         track_cache_hit()
         return _model_cache["model"]
 
-    # Charger le modèle
     track_cache_miss()
     model = get_model(version, stage)
 
-    # Mettre en cache
     _model_cache["model"] = model
     _model_cache["version"] = cache_key
     _model_cache["loaded_at"] = datetime.now()
 
-    # Mettre à jour les métriques
     update_model_info(MODEL_NAME, cache_key)
 
     return model
@@ -109,29 +101,23 @@ def transform_raw_to_features(data: SimplePredictionRequest) -> dict:
     """
     features = {}
 
-    # === Features de base (OHLCV) ===
     features['open'] = data.open
     features['high'] = data.high
     features['low'] = data.low
     features['tick_volume'] = data.tick_volume
 
-    # === Features dérivées du prix ===
     features['close_diff'] = data.close - data.open
     features['close_return'] = (data.close - data.open) / data.open if data.open != 0 else 0
     features['high_low_range'] = data.high - data.low
 
-    # === Volatilité (estimée) ===
-    # Si on n'a qu'une bougie, on utilise le range comme proxy de volatilité
     high_low_range = data.high - data.low
     features['volatility_1h'] = high_low_range / data.close if data.close != 0 else 0
     features['volatility_4h'] = features['volatility_1h'] * 1.5  # Approximation
 
-    # === Momentum (estimé) ===
     features['momentum_15m'] = features['close_return']
     features['momentum_1h'] = features['close_return'] * 2  # Approximation
     features['momentum_4h'] = features['close_return'] * 3  # Approximation
 
-    # === Patterns de chandeliers ===
     body = abs(data.close - data.open)
     upper_shadow = data.high - max(data.open, data.close)
     lower_shadow = min(data.open, data.close) - data.low
@@ -140,7 +126,6 @@ def transform_raw_to_features(data: SimplePredictionRequest) -> dict:
     features['upper_shadow'] = upper_shadow
     features['lower_shadow'] = lower_shadow
 
-    # === Indicateurs externes (avec valeurs par défaut si non fournis) ===
     features['spx_close'] = data.spx_close if data.spx_close is not None else 4500.0
     features['spx_trend'] = data.spx_trend if data.spx_trend is not None else 0.0
     features['risk_on'] = data.risk_on if data.risk_on is not None else 0.5
@@ -159,8 +144,6 @@ def transform_raw_to_features(data: SimplePredictionRequest) -> dict:
     features['vix_close'] = data.vix_close if data.vix_close is not None else 15.0
     features['vix_spike'] = data.vix_spike if data.vix_spike is not None else 0.0
 
-    # === Features manquantes avec valeurs neutres ===
-    # (Le modèle a été entraîné avec ces features, on les met à 0 ou valeur neutre)
     default_features = {
         'gdp_growth': 2.0,
         'unemployment': 4.0,
@@ -180,23 +163,18 @@ def transform_raw_to_features(data: SimplePredictionRequest) -> dict:
         'economic_surprise': 0.0
     }
 
-    # Ajouter les features par défaut qui ne sont pas déjà définies
     for key, value in default_features.items():
         if key not in features:
             features[key] = value
 
-    # === Features calculées supplémentaires ===
-    # Ratios de patterns
     total_range = high_low_range if high_low_range != 0 else 1
     features['body_ratio'] = body / total_range
     features['upper_shadow_ratio'] = upper_shadow / total_range
     features['lower_shadow_ratio'] = lower_shadow / total_range
 
-    # Direction du chandelier
     features['bullish_candle'] = 1.0 if data.close > data.open else 0.0
     features['bearish_candle'] = 1.0 if data.close < data.open else 0.0
 
-    # Volatility cross-checks
     features['is_high_volatility'] = 1.0 if features['volatility_1h'] > 0.002 else 0.0
 
     return features
@@ -224,9 +202,6 @@ def format_prediction_response(prediction: int, probabilities: np.ndarray, versi
     )
 
 
-# ============================================================================
-# ENDPOINTS
-# ============================================================================
 
 @router.post("/predict", response_model=PredictionResponse)
 def predict(
@@ -236,7 +211,7 @@ def predict(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    🎯 Prédiction avec données brutes
+    Prédiction avec données brutes
 
     Effectue une prédiction en fournissant uniquement les données de base (OHLCV).
     Toutes les features complexes sont calculées automatiquement comme dans l'ETL.
@@ -256,19 +231,14 @@ def predict(
     **Use case:** Trading en temps réel avec données brutes uniquement
     """
     try:
-        # Charger le modèle
         model = load_model_with_cache(version, stage)
 
-        # Transformer les données brutes en features
         features_dict = transform_raw_to_features(request)
 
-        # Récupérer les features attendues par le modèle (dans l'ordre)
         try:
-            # Essayer de charger la liste des features depuis les artifacts
             client = mlflow.tracking.MlflowClient()
             mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
-            # Récupérer la version du modèle
             if version:
                 model_version = client.get_model_version(MODEL_NAME, version)
             else:
@@ -278,23 +248,18 @@ def predict(
                 else:
                     raise Exception("Aucune version de modèle trouvée")
 
-            # Télécharger les features
             try:
                 features_path = client.download_artifacts(model_version.run_id, "features.txt")
                 with open(features_path, 'r') as f:
                     feature_names = [line.strip() for line in f.readlines()]
             except:
-                # Si on ne peut pas récupérer les features, on utilise l'ordre alphabétique
                 feature_names = sorted(features_dict.keys())
 
         except Exception as e:
-            # Fallback: ordre alphabétique
             feature_names = sorted(features_dict.keys())
 
-        # Créer le tableau de features dans le bon ordre
         features_array = np.array([[features_dict.get(f, 0.0) for f in feature_names]])
 
-        # Prédiction
         prediction_raw = model.predict(features_array)
         if isinstance(prediction_raw, np.ndarray):
             if len(prediction_raw.shape) > 1:
@@ -304,7 +269,6 @@ def predict(
         else:
             prediction = int(prediction_raw)
 
-        # Probabilités
         try:
             prob_array = model.predict_proba(features_array)
             if len(prob_array.shape) > 1:
@@ -315,7 +279,6 @@ def predict(
             probabilities = np.array([0.33, 0.34, 0.33])
             probabilities[int(prediction)] = 1.0
 
-        # Tracker les métriques
         response = format_prediction_response(prediction, probabilities, version or stage)
         track_prediction_metrics(prediction, response.probabilities, version or stage)
 
@@ -334,7 +297,7 @@ def predict_batch(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    🎯 Prédictions en batch avec données brutes
+    Prédictions en batch avec données brutes
 
     Effectue plusieurs prédictions en une seule requête pour de meilleures performances.
     Accepte une liste de données OHLCV brutes qui seront transformées automatiquement.
@@ -344,10 +307,8 @@ def predict_batch(
     try:
         start_time = time.time()
 
-        # Charger le modèle
         model = load_model_with_cache(version, stage)
 
-        # Récupérer les features attendues par le modèle (une seule fois pour le batch)
         try:
             client = mlflow.tracking.MlflowClient()
             mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
@@ -374,17 +335,13 @@ def predict_batch(
         predictions = []
 
         for raw_data in request.predictions:
-            # Transformer les données brutes en features
             features_dict = transform_raw_to_features(raw_data)
 
-            # Utiliser les feature_names si disponibles, sinon ordre alphabétique
             if feature_names is None:
                 feature_names = sorted(features_dict.keys())
 
-            # Créer le tableau de features dans le bon ordre
             features_array = np.array([[features_dict.get(f, 0.0) for f in feature_names]])
 
-            # Prédiction
             prediction_raw = model.predict(features_array)
             if isinstance(prediction_raw, np.ndarray):
                 if len(prediction_raw.shape) > 1:
@@ -394,7 +351,6 @@ def predict_batch(
             else:
                 prediction = int(prediction_raw)
 
-            # Probabilités
             try:
                 prob_array = model.predict_proba(features_array)
                 if len(prob_array.shape) > 1:
@@ -429,7 +385,7 @@ def get_model_info(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    ℹ️ Informations sur le modèle chargé
+    Informations sur le modèle chargé
 
     Retourne les métadonnées du modèle, y compris:
     - Nom et version
@@ -447,20 +403,16 @@ def get_model_info(
     try:
         client = mlflow.tracking.MlflowClient()
 
-        # Récupérer les informations du modèle depuis le Model Registry
         if version:
             model_version = client.get_model_version(MODEL_NAME, version)
         else:
-            # Récupérer la dernière version
             versions = client.search_model_versions(f"name='{MODEL_NAME}'")
             if not versions:
                 raise HTTPException(status_code=404, detail=f"Aucune version trouvée pour le modèle {MODEL_NAME}")
             model_version = versions[0]
 
-        # Récupérer le run associé
         run = client.get_run(model_version.run_id)
 
-        # Features requises par l'API (données brutes OHLCV)
         input_features = [
             "open (required)",
             "high (required)",
@@ -503,7 +455,7 @@ def get_model_metrics(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    📊 Métriques du modèle
+    Métriques du modèle
 
     Retourne les métriques d'entraînement du modèle:
     - Balanced Accuracy
@@ -518,7 +470,6 @@ def get_model_metrics(
     try:
         client = mlflow.tracking.MlflowClient()
 
-        # Récupérer la version du modèle
         if version:
             model_version = client.get_model_version(MODEL_NAME, version)
         else:
@@ -527,7 +478,6 @@ def get_model_metrics(
                 raise HTTPException(status_code=404, detail=f"Aucune version trouvée pour le modèle {MODEL_NAME}")
             model_version = versions[0]
 
-        # Récupérer le run
         run = client.get_run(model_version.run_id)
         metrics = run.data.metrics
 
@@ -552,22 +502,19 @@ def reload_model(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    🔄 Recharge le modèle
+    Recharge le modèle
 
     Force le rechargement du modèle depuis MLflow (vide le cache).
 
     **Use case:** Après mise à jour du modèle, pour charger une nouvelle version
     """
     try:
-        # Vider le cache
         _model_cache["model"] = None
         _model_cache["version"] = None
         _model_cache["loaded_at"] = None
 
-        # Recharger le modèle
         model = load_model_with_cache(version, stage)
 
-        # Tracker le rechargement
         track_model_reload()
 
         return {

@@ -10,9 +10,6 @@ from contextlib import contextmanager
 from typing import Dict
 
 
-# ============================================================================
-# VAULT INTEGRATION
-# ============================================================================
 
 def get_database_credentials() -> Dict[str, str]:
     """
@@ -25,7 +22,6 @@ def get_database_credentials() -> Dict[str, str]:
     Returns:
         Dict avec les credentials PostgreSQL
     """
-    # Vérifier si Vault est configuré
     vault_addr = os.getenv('VAULT_ADDR')
     vault_token = os.getenv('VAULT_TOKEN')
 
@@ -50,7 +46,6 @@ def get_database_credentials() -> Dict[str, str]:
             print(f"[WARNING] Could not retrieve credentials from Vault: {e}")
             print("[INFO] Falling back to environment variables")
 
-    # Fallback: utiliser les variables d'environnement
     return {
         "POSTGRES_HOST": os.getenv("POSTGRES_HOST", "localhost"),
         "POSTGRES_PORT": os.getenv("POSTGRES_PORT", "5432"),
@@ -60,11 +55,7 @@ def get_database_credentials() -> Dict[str, str]:
     }
 
 
-# ============================================================================
-# DATABASE CONFIGURATION
-# ============================================================================
 
-# Récupérer les credentials depuis Vault ou env vars
 credentials = get_database_credentials()
 
 DB_HOST = credentials["POSTGRES_HOST"]
@@ -73,17 +64,12 @@ DB_NAME = credentials["POSTGRES_DB"]
 DB_USER = credentials["POSTGRES_USER"]
 DB_PASSWORD = credentials["POSTGRES_PASSWORD"]
 
-# URL de connexion
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 print(f"[INFO] Database URL: postgresql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 
-# ============================================================================
-# ENGINE & SESSION
-# ============================================================================
 
-# Engine SQLAlchemy avec pool de connexions
 engine = create_engine(
     DATABASE_URL,
     pool_size=5,
@@ -93,13 +79,9 @@ engine = create_engine(
     echo=False,
 )
 
-# Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-# ============================================================================
-# UTILITY FUNCTIONS
-# ============================================================================
 
 def get_db_session() -> Session:
     """

@@ -8,10 +8,8 @@ from sqlalchemy import desc, and_
 from typing import List, Optional
 from datetime import datetime
 
-# Imports depuis airflow (PYTHONPATH configuré par config.py)
 from models import MT5EURUSDM15, YahooFinanceDaily, DocumentsMacro, MarketSnapshotM15
 
-# Imports depuis la nouvelle structure modulaire
 from app.core.dependencies import get_db
 from app.core.auth import verify_api_token
 from app.models.api_token import APIToken
@@ -25,9 +23,6 @@ from app.schemas.market import MT5Response
 router = APIRouter()
 
 
-# ============================================================================
-# ENDPOINT: MT5 Features
-# ============================================================================
 
 @router.get("/features/mt5", response_model=List[MT5Response])
 def get_mt5_features(
@@ -39,7 +34,7 @@ def get_mt5_features(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    🎯 Features microstructure MT5 (M15)
+    Features microstructure MT5 (M15)
 
     Récupère les features haute fréquence pour ML:
     - Prix OHLCV
@@ -55,13 +50,11 @@ def get_mt5_features(
     """
     query = db.query(MT5EURUSDM15)
 
-    # Filtres dates
     if start_date:
         query = query.filter(MT5EURUSDM15.time >= start_date)
     if end_date:
         query = query.filter(MT5EURUSDM15.time <= end_date)
 
-    # Tri et pagination
     query = query.order_by(desc(MT5EURUSDM15.time))
     results = query.offset(offset).limit(limit).all()
 
@@ -71,9 +64,6 @@ def get_mt5_features(
     return results
 
 
-# ============================================================================
-# ENDPOINT: Yahoo Finance Features
-# ============================================================================
 
 @router.get("/features/yahoo", response_model=List[YahooFinanceResponse])
 def get_yahoo_features(
@@ -85,7 +75,7 @@ def get_yahoo_features(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    🌍 Features macro-financières Yahoo Finance (Daily)
+    Features macro-financières Yahoo Finance (Daily)
 
     Récupère les features macro pour ML:
     - EUR/USD spot price
@@ -101,13 +91,11 @@ def get_yahoo_features(
     """
     query = db.query(YahooFinanceDaily)
 
-    # Filtres dates
     if start_date:
         query = query.filter(YahooFinanceDaily.time >= start_date)
     if end_date:
         query = query.filter(YahooFinanceDaily.time <= end_date)
 
-    # Tri et pagination
     query = query.order_by(desc(YahooFinanceDaily.time))
     results = query.offset(offset).limit(limit).all()
 
@@ -117,9 +105,6 @@ def get_yahoo_features(
     return results
 
 
-# ============================================================================
-# ENDPOINT: Macro Economic Features
-# ============================================================================
 
 @router.get("/features/macro", response_model=List[DocumentsMacroResponse])
 def get_macro_features(
@@ -131,7 +116,7 @@ def get_macro_features(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    📈 Features macro-économiques (Documents)
+    Features macro-économiques (Documents)
 
     Récupère les indicateurs économiques pour ML:
     - PIB (EUR, US, différentiel)
@@ -147,13 +132,11 @@ def get_macro_features(
     """
     query = db.query(DocumentsMacro)
 
-    # Filtres dates
     if start_date:
         query = query.filter(DocumentsMacro.time >= start_date)
     if end_date:
         query = query.filter(DocumentsMacro.time <= end_date)
 
-    # Tri et pagination
     query = query.order_by(desc(DocumentsMacro.time))
     results = query.offset(offset).limit(limit).all()
 
@@ -163,9 +146,6 @@ def get_macro_features(
     return results
 
 
-# ============================================================================
-# ENDPOINT: Training Dataset (FULL JOIN)
-# ============================================================================
 
 @router.get("/training", response_model=List[TrainingDataResponse])
 def get_training_data(
@@ -177,7 +157,7 @@ def get_training_data(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    🤖 Dataset complet pour entraînement ML
+    Dataset complet pour entraînement ML
 
     Récupère les données complètes avec JOINs automatiques:
     - MT5 features (microstructure)
@@ -198,19 +178,15 @@ def get_training_data(
     - Dernière semaine: `?start_date=2026-01-06T00:00:00&limit=672`
     - Période spécifique: `?start_date=2025-01-01&end_date=2025-12-31&limit=35000`
     """
-    # Requête avec JOINs
     query = db.query(
-        # Time
         MarketSnapshotM15.time,
 
-        # MT5 OHLCV
         MT5EURUSDM15.open.label('mt5_open'),
         MT5EURUSDM15.high.label('mt5_high'),
         MT5EURUSDM15.low.label('mt5_low'),
         MT5EURUSDM15.close.label('mt5_close'),
         MT5EURUSDM15.tick_volume.label('mt5_tick_volume'),
 
-        # MT5 Features
         MT5EURUSDM15.close_return,
         MT5EURUSDM15.volatility_1h,
         MT5EURUSDM15.volatility_4h,
@@ -218,14 +194,12 @@ def get_training_data(
         MT5EURUSDM15.momentum_1h,
         MT5EURUSDM15.momentum_4h,
 
-        # Yahoo Finance
         YahooFinanceDaily.eurusd_close,
         YahooFinanceDaily.dxy_close,
         YahooFinanceDaily.vix_close,
         YahooFinanceDaily.yield_spread_eur_us,
         YahooFinanceDaily.risk_sentiment,
 
-        # Macro
         DocumentsMacro.eur_gdp_growth,
         DocumentsMacro.us_gdp_growth,
         DocumentsMacro.eur_inflation_rate,
@@ -233,7 +207,6 @@ def get_training_data(
         DocumentsMacro.ecb_rate,
         DocumentsMacro.fed_rate,
 
-        # Snapshot Features
         MarketSnapshotM15.macro_micro_aligned,
         MarketSnapshotM15.euro_strength_bias,
         MarketSnapshotM15.regime_composite,
@@ -251,20 +224,17 @@ def get_training_data(
         MarketSnapshotM15.docs_time == DocumentsMacro.time
     )
 
-    # Filtres dates
     if start_date:
         query = query.filter(MarketSnapshotM15.time >= start_date)
     if end_date:
         query = query.filter(MarketSnapshotM15.time <= end_date)
 
-    # Tri et pagination
     query = query.order_by(desc(MarketSnapshotM15.time))
     results = query.offset(offset).limit(limit).all()
 
     if not results:
         raise HTTPException(status_code=404, detail="Aucune donnée d'entraînement trouvée")
 
-    # Convertir en objets TrainingDataResponse
     training_data = []
     for row in results:
         training_data.append(TrainingDataResponse(
@@ -302,9 +272,6 @@ def get_training_data(
     return training_data
 
 
-# ============================================================================
-# ENDPOINT: Data Statistics
-# ============================================================================
 
 @router.get("/stats")
 def get_data_stats(
@@ -312,7 +279,7 @@ def get_data_stats(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    📊 Statistiques des données disponibles
+    Statistiques des données disponibles
 
     Retourne un résumé de toutes les tables:
     - Nombre total de lignes
@@ -323,7 +290,6 @@ def get_data_stats(
     """
     stats = {}
 
-    # Stats MT5
     mt5_count = db.query(MT5EURUSDM15).count()
     mt5_first = db.query(MT5EURUSDM15).order_by(MT5EURUSDM15.time).first()
     mt5_last = db.query(MT5EURUSDM15).order_by(desc(MT5EURUSDM15.time)).first()
@@ -335,7 +301,6 @@ def get_data_stats(
         'last_pipeline_run': mt5_last.pipeline_run_id if mt5_last else None
     }
 
-    # Stats Yahoo
     yahoo_count = db.query(YahooFinanceDaily).count()
     yahoo_first = db.query(YahooFinanceDaily).order_by(YahooFinanceDaily.time).first()
     yahoo_last = db.query(YahooFinanceDaily).order_by(desc(YahooFinanceDaily.time)).first()
@@ -347,7 +312,6 @@ def get_data_stats(
         'last_pipeline_run': yahoo_last.pipeline_run_id if yahoo_last else None
     }
 
-    # Stats Documents
     docs_count = db.query(DocumentsMacro).count()
     docs_first = db.query(DocumentsMacro).order_by(DocumentsMacro.time).first()
     docs_last = db.query(DocumentsMacro).order_by(desc(DocumentsMacro.time)).first()
@@ -359,7 +323,6 @@ def get_data_stats(
         'last_pipeline_run': docs_last.pipeline_run_id if docs_last else None
     }
 
-    # Stats Snapshot
     snapshot_count = db.query(MarketSnapshotM15).count()
     snapshot_first = db.query(MarketSnapshotM15).order_by(MarketSnapshotM15.time).first()
     snapshot_last = db.query(MarketSnapshotM15).order_by(desc(MarketSnapshotM15.time)).first()
@@ -374,9 +337,6 @@ def get_data_stats(
     return stats
 
 
-# ============================================================================
-# ENDPOINT: Latest Features by Source
-# ============================================================================
 
 @router.get("/features/latest")
 def get_latest_features(
@@ -393,13 +353,10 @@ def get_latest_features(
 
     **Use case:** Quick check de la fraîcheur des données
     """
-    # Latest MT5
     mt5 = db.query(MT5EURUSDM15).order_by(desc(MT5EURUSDM15.time)).first()
 
-    # Latest Yahoo
     yahoo = db.query(YahooFinanceDaily).order_by(desc(YahooFinanceDaily.time)).first()
 
-    # Latest Documents
     docs = db.query(DocumentsMacro).order_by(desc(DocumentsMacro.time)).first()
 
     return {

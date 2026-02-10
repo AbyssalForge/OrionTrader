@@ -11,26 +11,20 @@ from datetime import datetime
 import os
 import sys
 
-# Ajouter le chemin pour les imports locaux
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 try:
     from utils.database import get_db_connection
 except ImportError:
-    # Fallback si l'import échoue
     def get_db_connection():
         return None
 
-# Configuration de la page
 st.set_page_config(
     page_title="Wikipedia Data - OrionTrader",
     page_icon="🏦",
     layout="wide"
 )
 
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
 
 @st.cache_data(ttl=300)  # Cache 5 minutes
 def load_wikipedia_data():
@@ -83,58 +77,42 @@ def create_sample_data():
         'scraped_at': [datetime.now()] * 8
     })
 
-# ============================================================================
-# HEADER
-# ============================================================================
 
 st.title("🏦 Données Wikipedia - Indices Boursiers")
 st.markdown("Exploration des données d'indices boursiers scrapées depuis Wikipedia")
 
 st.divider()
 
-# ============================================================================
-# CHARGEMENT DES DONNÉES
-# ============================================================================
 
 with st.spinner("📥 Chargement des données..."):
     df = load_wikipedia_data()
 
-    # Utiliser des données d'exemple si la DB n'est pas disponible
     if df is None or df.empty:
         st.warning("⚠️ Impossible de se connecter à la base de données. Affichage de données d'exemple.")
         df = create_sample_data()
 
 st.success(f"✅ **{len(df)}** entreprises chargées")
 
-# ============================================================================
-# SIDEBAR - FILTRES
-# ============================================================================
 
 with st.sidebar:
     st.header("🔍 Filtres")
 
-    # Filtre par indice
     indices = ['Tous'] + sorted(df['index_name'].unique().tolist())
     selected_index = st.selectbox("📈 Indice boursier", indices)
 
-    # Filtre par secteur
     sectors = ['Tous'] + sorted(df['sector'].dropna().unique().tolist())
     selected_sector = st.selectbox("🏢 Secteur", sectors)
 
-    # Filtre par pays
     countries = ['Tous'] + sorted(df['country'].dropna().unique().tolist())
     selected_country = st.selectbox("🌍 Pays", countries)
 
-    # Filtre multi-indices
     show_multi_index = st.checkbox("Afficher uniquement les multi-indices", False)
 
     st.divider()
 
-    # Recherche par ticker ou entreprise
     st.subheader("🔎 Recherche")
     search_term = st.text_input("Ticker ou Entreprise", "").upper()
 
-# Appliquer les filtres
 filtered_df = df.copy()
 
 if selected_index != 'Tous':
@@ -157,9 +135,6 @@ if search_term:
 
 st.info(f"📊 **{len(filtered_df)}** entreprises après filtrage")
 
-# ============================================================================
-# STATISTIQUES RAPIDES
-# ============================================================================
 
 st.header("📊 Statistiques")
 
@@ -196,16 +171,12 @@ with col4:
 
 st.divider()
 
-# ============================================================================
-# VISUALISATIONS
-# ============================================================================
 
 st.header("📊 Visualisations")
 
 tab1, tab2, tab3 = st.tabs(["📈 Par Indice", "🏢 Par Secteur", "🌍 Par Pays"])
 
 with tab1:
-    # Distribution par indice
     if not filtered_df.empty:
         index_counts = filtered_df['index_name'].value_counts()
 
@@ -224,7 +195,6 @@ with tab1:
         st.info("Aucune donnée à afficher")
 
 with tab2:
-    # Distribution par secteur
     if not filtered_df.empty and 'sector' in filtered_df.columns:
         sector_counts = filtered_df['sector'].dropna().value_counts()
 
@@ -240,7 +210,6 @@ with tab2:
         st.info("Aucune donnée de secteur disponible")
 
 with tab3:
-    # Distribution par pays
     if not filtered_df.empty and 'country' in filtered_df.columns:
         country_counts = filtered_df['country'].dropna().value_counts()
 
@@ -259,13 +228,9 @@ with tab3:
 
 st.divider()
 
-# ============================================================================
-# TABLEAU DE DONNÉES
-# ============================================================================
 
 st.header("📋 Données détaillées")
 
-# Colonnes à afficher
 display_columns = [
     'ticker',
     'company_name',
@@ -276,11 +241,9 @@ display_columns = [
     'is_multi_index'
 ]
 
-# Vérifier que toutes les colonnes existent
 available_columns = [col for col in display_columns if col in filtered_df.columns]
 
 if not filtered_df.empty:
-    # Configuration des colonnes
     column_config = {
         "ticker": st.column_config.TextColumn("Ticker", width="small"),
         "company_name": st.column_config.TextColumn("Entreprise", width="large"),
@@ -299,7 +262,6 @@ if not filtered_df.empty:
         height=400
     )
 
-    # Bouton de téléchargement
     csv = filtered_df[available_columns].to_csv(index=False).encode('utf-8')
 
     st.download_button(
@@ -312,9 +274,6 @@ if not filtered_df.empty:
 else:
     st.warning("Aucune donnée ne correspond aux filtres sélectionnés")
 
-# ============================================================================
-# TOP ENTREPRISES
-# ============================================================================
 
 st.divider()
 
@@ -349,9 +308,6 @@ with col2:
     else:
         st.info("Aucune donnée de secteur disponible")
 
-# ============================================================================
-# FOOTER
-# ============================================================================
 
 st.divider()
 

@@ -8,10 +8,8 @@ from sqlalchemy import desc, and_
 from typing import List, Optional
 from datetime import datetime, timedelta
 
-# Imports depuis airflow (PYTHONPATH configuré par config.py)
 from models import MT5EURUSDM15, MarketSnapshotM15
 
-# Imports depuis la nouvelle structure modulaire
 from app.core.dependencies import get_db
 from app.core.auth import verify_api_token
 from app.models.api_token import APIToken
@@ -24,9 +22,6 @@ from app.schemas.market import (
 router = APIRouter()
 
 
-# ============================================================================
-# ENDPOINT: Latest Market Data
-# ============================================================================
 
 @router.get("/latest", response_model=MarketSnapshotResponse)
 def get_latest_market_snapshot(
@@ -34,7 +29,7 @@ def get_latest_market_snapshot(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    📊 Récupère le dernier snapshot de marché disponible
+    Récupère le dernier snapshot de marché disponible
 
     Retourne les données les plus récentes incluant:
     - Prix MT5 (M15)
@@ -52,9 +47,6 @@ def get_latest_market_snapshot(
     return snapshot
 
 
-# ============================================================================
-# ENDPOINT: OHLCV M15 Data
-# ============================================================================
 
 @router.get("/ohlcv/m15", response_model=List[MT5Response])
 def get_mt5_ohlcv(
@@ -66,7 +58,7 @@ def get_mt5_ohlcv(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    📈 Récupère les données OHLCV MT5 (M15)
+    Récupère les données OHLCV MT5 (M15)
 
     Données haute fréquence (15 minutes) incluant:
     - Prix OHLCV
@@ -82,16 +74,13 @@ def get_mt5_ohlcv(
     """
     query = db.query(MT5EURUSDM15)
 
-    # Filtre par date si fourni
     if start_date:
         query = query.filter(MT5EURUSDM15.time >= start_date)
     if end_date:
         query = query.filter(MT5EURUSDM15.time <= end_date)
 
-    # Si aucune date fournie, prendre les dernières données
     query = query.order_by(desc(MT5EURUSDM15.time))
 
-    # Pagination
     results = query.offset(offset).limit(limit).all()
 
     if not results:
@@ -100,9 +89,6 @@ def get_mt5_ohlcv(
     return results
 
 
-# ============================================================================
-# ENDPOINT: Market Snapshot History
-# ============================================================================
 
 @router.get("/snapshot", response_model=List[MarketSnapshotResponse])
 def get_market_snapshots(
@@ -117,7 +103,7 @@ def get_market_snapshots(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    📊 Récupère l'historique des snapshots de marché avec filtres
+    Récupère l'historique des snapshots de marché avec filtres
 
     Permet de filtrer par:
     - Plage de dates
@@ -134,7 +120,6 @@ def get_market_snapshots(
     """
     query = db.query(MarketSnapshotM15)
 
-    # Filtres
     if start_date:
         query = query.filter(MarketSnapshotM15.time >= start_date)
     if end_date:
@@ -146,7 +131,6 @@ def get_market_snapshots(
     if min_confidence:
         query = query.filter(MarketSnapshotM15.signal_confidence_score >= min_confidence)
 
-    # Tri et pagination
     query = query.order_by(desc(MarketSnapshotM15.time))
     results = query.offset(offset).limit(limit).all()
 
@@ -156,9 +140,6 @@ def get_market_snapshots(
     return results
 
 
-# ============================================================================
-# ENDPOINT: Market Regimes Distribution
-# ============================================================================
 
 @router.get("/regimes", response_model=List[RegimeDistributionResponse])
 def get_regime_distribution(
@@ -168,7 +149,7 @@ def get_regime_distribution(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    📊 Distribution des régimes de marché
+    Distribution des régimes de marché
 
     Analyse la répartition des différents régimes sur une période donnée:
     - risk_on: Sentiment haussier, appétit pour le risque
@@ -182,19 +163,16 @@ def get_regime_distribution(
     """
     query = db.query(MarketSnapshotM15)
 
-    # Filtres dates
     if start_date:
         query = query.filter(MarketSnapshotM15.time >= start_date)
     if end_date:
         query = query.filter(MarketSnapshotM15.time <= end_date)
 
-    # Compter tous les enregistrements
     total = query.count()
 
     if total == 0:
         raise HTTPException(status_code=404, detail="Aucune donnée trouvée pour cette période")
 
-    # Compter par régime
     regimes = ["risk_on", "risk_off", "neutral", "volatile"]
     distribution = []
 
@@ -213,9 +191,6 @@ def get_regime_distribution(
     return distribution
 
 
-# ============================================================================
-# ENDPOINT: Latest OHLCV (Quick Access)
-# ============================================================================
 
 @router.get("/ohlcv/latest", response_model=MT5Response)
 def get_latest_ohlcv(
@@ -223,7 +198,7 @@ def get_latest_ohlcv(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    📈 Dernier prix OHLCV disponible
+    Dernier prix OHLCV disponible
 
     **Use case:** Monitoring temps réel, widgets de prix
 
@@ -237,9 +212,6 @@ def get_latest_ohlcv(
     return ohlcv
 
 
-# ============================================================================
-# ENDPOINT: Market Statistics
-# ============================================================================
 
 @router.get("/stats")
 def get_market_stats(
@@ -249,7 +221,7 @@ def get_market_stats(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    📊 Statistiques de marché agrégées
+    Statistiques de marché agrégées
 
     Calcule des statistiques sur une période:
     - Nombre total de snapshots
@@ -262,34 +234,28 @@ def get_market_stats(
     """
     query = db.query(MarketSnapshotM15)
 
-    # Filtres dates
     if start_date:
         query = query.filter(MarketSnapshotM15.time >= start_date)
     if end_date:
         query = query.filter(MarketSnapshotM15.time <= end_date)
 
-    # Récupérer toutes les données
     snapshots = query.all()
 
     if not snapshots:
         raise HTTPException(status_code=404, detail="Aucune donnée trouvée")
 
-    # Calculer les stats
     total_count = len(snapshots)
     first_date = min(s.time for s in snapshots)
     last_date = max(s.time for s in snapshots)
 
-    # Scores de confiance moyens
     confidence_scores = [s.signal_confidence_score for s in snapshots if s.signal_confidence_score is not None]
     avg_confidence = sum(confidence_scores) / len(confidence_scores) if confidence_scores else 0
 
-    # Distribution régimes
     regimes = {}
     for s in snapshots:
         regime = s.regime_composite or "unknown"
         regimes[regime] = regimes.get(regime, 0) + 1
 
-    # Distribution volatilité
     volatility_regimes = {}
     for s in snapshots:
         vol_regime = s.volatility_regime or "unknown"

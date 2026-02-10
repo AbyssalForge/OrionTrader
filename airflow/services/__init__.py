@@ -29,20 +29,16 @@ from .validation_service import (
 )
 
 __all__ = [
-    # Bronze - Extract (→ .parquet staging)
     'initialize_database',
     'extract_mt5_data',
     'extract_yahoo_data',
     'extract_eurostat_data',
-    # Silver - Transform (.parquet → .parquet features)
     'transform_mt5_features',
     'transform_yahoo_features',
     'transform_documents_features',
-    # Gold - Load (.parquet → DB)
     'load_mt5_to_db',
     'load_yahoo_to_db',
     'load_documents_to_db',
-    # Validation
     'validate_data_quality',
     'send_discord_notification'
 ]

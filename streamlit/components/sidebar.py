@@ -17,19 +17,14 @@ def render_sidebar():
     with st.sidebar:
         st.title("⚙️ Configuration")
 
-        # ====================================================================
-        # STATUS DE CONNEXION
-        # ====================================================================
         st.subheader("🔌 Connexion")
 
-        # Test connexion DB
         db_status = test_database_connection()
         if db_status:
             st.success("✅ Database: Connectée")
         else:
             st.error("❌ Database: Déconnectée")
 
-        # Test connexion API
         try:
             health = get_health_status()
             if health.get("status") == "ok":
@@ -43,9 +38,6 @@ def render_sidebar():
 
         st.divider()
 
-        # ====================================================================
-        # FILTRES TEMPORELS
-        # ====================================================================
         st.subheader("📅 Période")
 
         time_range = st.selectbox(
@@ -56,9 +48,6 @@ def render_sidebar():
 
         st.divider()
 
-        # ====================================================================
-        # AUTO-REFRESH
-        # ====================================================================
         st.subheader("🔄 Rafraîchissement")
 
         auto_refresh = st.checkbox("Auto-refresh", value=False)
@@ -75,9 +64,6 @@ def render_sidebar():
 
         st.divider()
 
-        # ====================================================================
-        # INFO VERSION
-        # ====================================================================
         st.caption("OrionTrader v3.0")
         st.caption("Streamlit Dashboard")
 

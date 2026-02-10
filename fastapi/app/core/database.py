@@ -12,11 +12,7 @@ from app.config import settings, get_database_url
 from app.core.vault import get_database_credentials
 
 
-# ============================================================================
-# DATABASE CONFIGURATION
-# ============================================================================
 
-# Récupérer les credentials depuis Vault ou env vars
 credentials = get_database_credentials()
 
 DB_HOST = credentials["POSTGRES_HOST"]
@@ -25,7 +21,6 @@ DB_NAME = credentials["POSTGRES_DB"]
 DB_USER = credentials["POSTGRES_USER"]
 DB_PASSWORD = credentials["POSTGRES_PASSWORD"]
 
-# URL de connexion
 DATABASE_URL = get_database_url(
     host=DB_HOST,
     port=DB_PORT,
@@ -37,11 +32,7 @@ DATABASE_URL = get_database_url(
 print(f"[INFO] Database URL: postgresql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 
-# ============================================================================
-# ENGINE & SESSION
-# ============================================================================
 
-# Engine SQLAlchemy avec pool de connexions
 engine = create_engine(
     DATABASE_URL,
     pool_size=settings.DB_POOL_SIZE,
@@ -51,13 +42,9 @@ engine = create_engine(
     echo=False,  # Mettre True pour debug SQL
 )
 
-# Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-# ============================================================================
-# CONTEXT MANAGER
-# ============================================================================
 
 @contextmanager
 def get_db_context():
@@ -75,9 +62,6 @@ def get_db_context():
         db.close()
 
 
-# ============================================================================
-# UTILITY FUNCTIONS
-# ============================================================================
 
 def test_connection() -> bool:
     """

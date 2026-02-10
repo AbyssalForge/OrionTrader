@@ -7,7 +7,6 @@ import pandas as pd
 from datetime import datetime
 import sys
 
-# Ajouter le path des models Airflow
 sys.path.insert(0, '/opt/airflow')
 
 from utils.database import get_db_session
@@ -21,7 +20,6 @@ def render_raw_data_tab():
     try:
         session = get_db_session()
 
-        # Options de limite
         col1, col2 = st.columns([3, 1])
 
         with col2:
@@ -31,7 +29,6 @@ def render_raw_data_tab():
                 index=0
             )
 
-        # Requête
         query = session.query(MarketSnapshotM15).order_by(
             MarketSnapshotM15.time.desc()
         ).limit(limit)
@@ -43,12 +40,8 @@ def render_raw_data_tab():
             session.close()
             return
 
-        # Affichage des données
         st.dataframe(df_raw, use_container_width=True, hide_index=True)
 
-        # ====================================================================
-        # STATISTIQUES RAPIDES
-        # ====================================================================
         st.divider()
         st.markdown("### 📊 Statistiques")
 
@@ -83,9 +76,6 @@ def render_raw_data_tab():
                 f"{high_confidence_pct:.1f}%"
             )
 
-        # ====================================================================
-        # OPTION DE TÉLÉCHARGEMENT
-        # ====================================================================
         st.divider()
 
         csv = df_raw.to_csv(index=False)

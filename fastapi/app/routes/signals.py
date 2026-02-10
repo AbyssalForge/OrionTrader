@@ -8,10 +8,8 @@ from sqlalchemy import desc, and_, or_
 from typing import List, Optional
 from datetime import datetime
 
-# Imports depuis airflow (PYTHONPATH configuré par config.py)
 from models import MT5EURUSDM15, MarketSnapshotM15
 
-# Imports depuis la nouvelle structure modulaire
 from app.core.dependencies import get_db
 from app.core.auth import verify_api_token
 from app.models.api_token import APIToken
@@ -20,9 +18,6 @@ from app.schemas.signals import HighConfidenceSignalResponse
 router = APIRouter()
 
 
-# ============================================================================
-# ENDPOINT: High Confidence Signals
-# ============================================================================
 
 @router.get("/high-confidence", response_model=List[HighConfidenceSignalResponse])
 def get_high_confidence_signals(
@@ -38,7 +33,7 @@ def get_high_confidence_signals(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    🎯 Signaux de trading haute confiance
+    Signaux de trading haute confiance
 
     Récupère les signaux avec score de confiance élevé et faible divergence.
 
@@ -60,7 +55,6 @@ def get_high_confidence_signals(
     - Risk-off haute confiance: `?min_confidence=0.75&regime=risk_off`
     - Basse volatilité + confiance: `?min_confidence=0.7&volatility_regime=low`
     """
-    # Requête avec JOIN pour récupérer aussi les prix MT5
     query = db.query(
         MarketSnapshotM15.time,
         MarketSnapshotM15.signal_confidence_score,
@@ -77,13 +71,11 @@ def get_high_confidence_signals(
         MarketSnapshotM15.mt5_time == MT5EURUSDM15.time
     )
 
-    # Filtres obligatoires
     query = query.filter(
         MarketSnapshotM15.signal_confidence_score >= min_confidence,
         MarketSnapshotM15.signal_divergence_count <= max_divergence
     )
 
-    # Filtres optionnels
     if regime:
         query = query.filter(MarketSnapshotM15.regime_composite == regime)
     if volatility_regime:
@@ -93,13 +85,11 @@ def get_high_confidence_signals(
     if end_date:
         query = query.filter(MarketSnapshotM15.time <= end_date)
 
-    # Tri par confiance décroissante puis date
     query = query.order_by(
         desc(MarketSnapshotM15.signal_confidence_score),
         desc(MarketSnapshotM15.time)
     )
 
-    # Pagination
     results = query.offset(offset).limit(limit).all()
 
     if not results:
@@ -108,7 +98,6 @@ def get_high_confidence_signals(
             detail=f"Aucun signal trouvé avec confiance >= {min_confidence}"
         )
 
-    # Convertir en objets HighConfidenceSignalResponse
     signals = []
     for row in results:
         signals.append(HighConfidenceSignalResponse(
@@ -127,9 +116,6 @@ def get_high_confidence_signals(
     return signals
 
 
-# ============================================================================
-# ENDPOINT: Best Signals (Top N)
-# ============================================================================
 
 @router.get("/best", response_model=List[HighConfidenceSignalResponse])
 def get_best_signals(
@@ -140,7 +126,7 @@ def get_best_signals(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    🏆 Meilleurs signaux (Top N)
+    Meilleurs signaux (Top N)
 
     Récupère les N meilleurs signaux basés sur le score de confiance,
     avec divergence = 0 (cohérence maximale).
@@ -165,25 +151,20 @@ def get_best_signals(
         MarketSnapshotM15.mt5_time == MT5EURUSDM15.time
     )
 
-    # Filtrer uniquement les signaux cohérents (divergence = 0)
     query = query.filter(MarketSnapshotM15.signal_divergence_count == 0)
 
-    # Filtres dates
     if start_date:
         query = query.filter(MarketSnapshotM15.time >= start_date)
     if end_date:
         query = query.filter(MarketSnapshotM15.time <= end_date)
 
-    # Tri par confiance décroissante
     query = query.order_by(desc(MarketSnapshotM15.signal_confidence_score))
 
-    # Limiter au top N
     results = query.limit(top_n).all()
 
     if not results:
         raise HTTPException(status_code=404, detail="Aucun signal trouvé")
 
-    # Convertir
     signals = []
     for row in results:
         signals.append(HighConfidenceSignalResponse(
@@ -202,9 +183,6 @@ def get_best_signals(
     return signals
 
 
-# ============================================================================
-# ENDPOINT: Strong Trend Signals
-# ============================================================================
 
 @router.get("/strong-trend", response_model=List[HighConfidenceSignalResponse])
 def get_strong_trend_signals(
@@ -217,7 +195,7 @@ def get_strong_trend_signals(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    📈📉 Signaux avec forte tendance
+    Signaux avec forte tendance
 
     Récupère les signaux avec tendance forte et confiance élevée.
 
@@ -251,33 +229,27 @@ def get_strong_trend_signals(
         MarketSnapshotM15.mt5_time == MT5EURUSDM15.time
     )
 
-    # Filtre confiance
     query = query.filter(MarketSnapshotM15.signal_confidence_score >= min_confidence)
 
-    # Filtre direction
     if direction == "bullish":
         query = query.filter(MarketSnapshotM15.trend_strength_composite >= min_trend_strength)
     elif direction == "bearish":
         query = query.filter(MarketSnapshotM15.trend_strength_composite <= -min_trend_strength)
     else:
-        # Pas de direction spécifiée: prendre les deux (forte tendance en valeur absolue)
         from sqlalchemy import func
         query = query.filter(func.abs(MarketSnapshotM15.trend_strength_composite) >= min_trend_strength)
 
-    # Tri par force de tendance (valeur absolue) puis confiance
     from sqlalchemy import func
     query = query.order_by(
         desc(func.abs(MarketSnapshotM15.trend_strength_composite)),
         desc(MarketSnapshotM15.signal_confidence_score)
     )
 
-    # Pagination
     results = query.offset(offset).limit(limit).all()
 
     if not results:
         raise HTTPException(status_code=404, detail="Aucun signal avec forte tendance trouvé")
 
-    # Convertir
     signals = []
     for row in results:
         signals.append(HighConfidenceSignalResponse(
@@ -296,9 +268,6 @@ def get_strong_trend_signals(
     return signals
 
 
-# ============================================================================
-# ENDPOINT: Event Window Signals
-# ============================================================================
 
 @router.get("/event-window", response_model=List[HighConfidenceSignalResponse])
 def get_event_window_signals(
@@ -310,7 +279,7 @@ def get_event_window_signals(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    📅 Signaux pendant fenêtres d'événements importants
+    Signaux pendant fenêtres d'événements importants
 
     Récupère les signaux qui se produisent pendant ou proche d'événements
     macro importants (annonces BCE/FED, NFP, etc.).
@@ -336,22 +305,18 @@ def get_event_window_signals(
         MarketSnapshotM15.mt5_time == MT5EURUSDM15.time
     )
 
-    # Filtres
     if active_only:
         query = query.filter(MarketSnapshotM15.event_window_active == True)
 
     query = query.filter(MarketSnapshotM15.signal_confidence_score >= min_confidence)
 
-    # Tri par date décroissante
     query = query.order_by(desc(MarketSnapshotM15.time))
 
-    # Pagination
     results = query.offset(offset).limit(limit).all()
 
     if not results:
         raise HTTPException(status_code=404, detail="Aucun signal event-window trouvé")
 
-    # Convertir
     signals = []
     for row in results:
         signals.append(HighConfidenceSignalResponse(
@@ -370,9 +335,6 @@ def get_event_window_signals(
     return signals
 
 
-# ============================================================================
-# ENDPOINT: Signal Statistics
-# ============================================================================
 
 @router.get("/stats")
 def get_signal_stats(
@@ -382,7 +344,7 @@ def get_signal_stats(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    📊 Statistiques des signaux
+    Statistiques des signaux
 
     Analyse agrégée des signaux:
     - Distribution par score de confiance
@@ -394,7 +356,6 @@ def get_signal_stats(
     """
     query = db.query(MarketSnapshotM15)
 
-    # Filtres dates
     if start_date:
         query = query.filter(MarketSnapshotM15.time >= start_date)
     if end_date:
@@ -405,28 +366,23 @@ def get_signal_stats(
     if not snapshots:
         raise HTTPException(status_code=404, detail="Aucune donnée trouvée")
 
-    # Calculs
     total = len(snapshots)
 
-    # Distribution confiance
     high_confidence = len([s for s in snapshots if s.signal_confidence_score and s.signal_confidence_score >= 0.7])
     medium_confidence = len([s for s in snapshots if s.signal_confidence_score and 0.4 <= s.signal_confidence_score < 0.7])
     low_confidence = len([s for s in snapshots if s.signal_confidence_score and s.signal_confidence_score < 0.4])
 
-    # Distribution divergence
     divergence_counts = {}
     for s in snapshots:
         div = s.signal_divergence_count if s.signal_divergence_count is not None else -1
         divergence_counts[div] = divergence_counts.get(div, 0) + 1
 
-    # Distribution tendance
     strong_bullish = len([s for s in snapshots if s.trend_strength_composite and s.trend_strength_composite >= 0.5])
     moderate_bullish = len([s for s in snapshots if s.trend_strength_composite and 0.2 <= s.trend_strength_composite < 0.5])
     neutral = len([s for s in snapshots if s.trend_strength_composite and -0.2 <= s.trend_strength_composite < 0.2])
     moderate_bearish = len([s for s in snapshots if s.trend_strength_composite and -0.5 <= s.trend_strength_composite < -0.2])
     strong_bearish = len([s for s in snapshots if s.trend_strength_composite and s.trend_strength_composite < -0.5])
 
-    # Event windows
     event_windows = len([s for s in snapshots if s.event_window_active])
 
     return {

@@ -6,51 +6,41 @@ from prometheus_client import Counter, Histogram, Gauge, Info
 import time
 from functools import wraps
 
-# ============================================================================
-# MÉTRIQUES GLOBALES
-# ============================================================================
 
-# Compteur de prédictions par classe
 prediction_counter = Counter(
     'model_predictions_total',
     'Nombre total de prédictions par classe',
     ['prediction_label', 'model_version']
 )
 
-# Histogramme de confiance des prédictions
 prediction_confidence = Histogram(
     'model_prediction_confidence',
     'Distribution de la confiance des prédictions',
     buckets=[0.0, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 )
 
-# Histogramme du temps de prédiction
 prediction_duration = Histogram(
     'model_prediction_duration_seconds',
     'Temps de traitement des prédictions',
     ['endpoint']
 )
 
-# Compteur d'erreurs de prédiction
 prediction_errors = Counter(
     'model_prediction_errors_total',
     'Nombre d\'erreurs lors des prédictions',
     ['error_type']
 )
 
-# Gauge pour le nombre de features
 model_features_count = Gauge(
     'model_features_count',
     'Nombre de features utilisées par le modèle'
 )
 
-# Info sur le modèle chargé
 model_info = Info(
     'model_loaded',
     'Informations sur le modèle actuellement chargé'
 )
 
-# Gauge pour les probabilités moyennes par classe
 avg_probability_short = Gauge(
     'model_avg_probability_short',
     'Probabilité moyenne pour la classe SHORT (fenêtre glissante)'
@@ -66,13 +56,11 @@ avg_probability_long = Gauge(
     'Probabilité moyenne pour la classe LONG (fenêtre glissante)'
 )
 
-# Compteur de rechargements du modèle
 model_reload_counter = Counter(
     'model_reload_total',
     'Nombre de fois où le modèle a été rechargé'
 )
 
-# Gauge pour le cache hit rate
 model_cache_hits = Counter(
     'model_cache_hits_total',
     'Nombre de fois où le modèle a été récupéré du cache'
@@ -84,9 +72,6 @@ model_cache_misses = Counter(
 )
 
 
-# ============================================================================
-# DÉCORATEURS POUR TRACKING AUTOMATIQUE
-# ============================================================================
 
 def track_prediction_time(endpoint_name: str):
     """
@@ -127,17 +112,14 @@ def track_prediction_metrics(prediction: int, probabilities: dict, version: str 
     class_labels = {0: "SHORT", 1: "NEUTRAL", 2: "LONG"}
     prediction_label = class_labels.get(prediction, "UNKNOWN")
 
-    # Incrémenter le compteur de prédictions
     prediction_counter.labels(
         prediction_label=prediction_label,
         model_version=version or "unknown"
     ).inc()
 
-    # Enregistrer la confiance
     confidence = max(probabilities.values()) if probabilities else 0.0
     prediction_confidence.observe(confidence)
 
-    # Mettre à jour les probabilités moyennes
     if probabilities:
         avg_probability_short.set(probabilities.get("SHORT", 0.0))
         avg_probability_neutral.set(probabilities.get("NEUTRAL", 0.0))

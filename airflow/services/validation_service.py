@@ -31,9 +31,6 @@ def validate_data_quality(mt5_result: dict, yahoo_result: dict, docs_result: dic
     errors = []
     tables_ok = 0
 
-    # ========================================================================
-    # VALIDATION TABLE 1: MT5
-    # ========================================================================
     print(f"[VALIDATE] Table 1/3: mt5_eurusd_m15")
 
     if mt5_result.get("status") != "success":
@@ -48,9 +45,6 @@ def validate_data_quality(mt5_result: dict, yahoo_result: dict, docs_result: dic
             tables_ok += 1
             print(f"[VALIDATE]   ✓ Table MT5 OK")
 
-    # ========================================================================
-    # VALIDATION TABLE 2: YAHOO FINANCE
-    # ========================================================================
     print(f"[VALIDATE] Table 2/3: yahoo_finance_daily")
 
     if yahoo_result.get("status") != "success":
@@ -65,9 +59,6 @@ def validate_data_quality(mt5_result: dict, yahoo_result: dict, docs_result: dic
             tables_ok += 1
             print(f"[VALIDATE]   ✓ Table Yahoo OK")
 
-    # ========================================================================
-    # VALIDATION TABLE 3: DOCUMENTS
-    # ========================================================================
     print(f"[VALIDATE] Table 3/4: documents_macro")
 
     if docs_result.get("status") != "success":
@@ -82,9 +73,6 @@ def validate_data_quality(mt5_result: dict, yahoo_result: dict, docs_result: dic
             tables_ok += 1
             print(f"[VALIDATE]   ✓ Table Documents OK")
 
-    # ========================================================================
-    # VALIDATION TABLE 4: MARKET SNAPSHOT
-    # ========================================================================
     print(f"[VALIDATE] Table 4/4: market_snapshot_m15")
 
     if snapshot_result.get("status") != "success":
@@ -99,9 +87,6 @@ def validate_data_quality(mt5_result: dict, yahoo_result: dict, docs_result: dic
             tables_ok += 1
             print(f"[VALIDATE]   ✓ Table Snapshot OK")
 
-    # ========================================================================
-    # STATUT FINAL
-    # ========================================================================
     if errors:
         status = "failed"
         message = f"❌ Pipeline échoué: {len(errors)} erreur(s)"
@@ -142,19 +127,14 @@ def send_discord_notification(validation_result: dict, webhook_url: str) -> dict
     """
     print("[NOTIFY] Envoi notification Discord...")
 
-    # ========================================================================
-    # CONSTRUCTION MESSAGE
-    # ========================================================================
     emoji = validation_result.get("emoji", "❓")
     status = validation_result.get("status", "unknown")
 
-    # Header
     message = f"{emoji} **Pipeline ETL EURUSD terminé**\n\n"
     message += f"**Statut:** {validation_result.get('message', 'Inconnu')}\n"
     message += f"**Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
     message += f"**Tables validées:** {validation_result.get('tables_ok', 0)}/4\n\n"
 
-    # Données chargées
     message += "**📊 Données chargées:**\n"
     message += f"• Table MT5 (M15):         {validation_result.get('mt5_rows', 0):,} lignes\n"
     message += f"• Table Yahoo (Daily):     {validation_result.get('yahoo_rows', 0):,} lignes\n"
@@ -162,15 +142,11 @@ def send_discord_notification(validation_result: dict, webhook_url: str) -> dict
     message += f"• Table Snapshot (M15):    {validation_result.get('snapshot_rows', 0):,} lignes\n"
     message += f"• **Total:**               {validation_result.get('total_rows', 0):,} lignes\n"
 
-    # Erreurs seulement (pas de warnings)
     if validation_result.get("errors"):
         message += "\n**❌ Erreurs:**\n"
         for error in validation_result["errors"]:
             message += f"• {error}\n"
 
-    # ========================================================================
-    # ENVOI DISCORD
-    # ========================================================================
     try:
         response = requests.post(
             webhook_url,
@@ -227,7 +203,6 @@ def send_wikipedia_notification(validation_result: dict, webhook_url: str) -> di
     """
     print("[NOTIFY] Envoi notification Discord (Wikipedia)...")
 
-    # Construction message
     status = validation_result.get("status", "unknown")
     emoji = "✅" if status == "success" else "❌"
 
@@ -252,7 +227,6 @@ def send_wikipedia_notification(validation_result: dict, webhook_url: str) -> di
 
     message += "\n**🌐 Source:** Wikipedia (scraping)\n"
 
-    # Envoi Discord
     try:
         response = requests.post(webhook_url, json={"content": message}, timeout=10)
         response.raise_for_status()

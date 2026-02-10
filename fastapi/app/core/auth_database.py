@@ -9,28 +9,19 @@ from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
 from typing import Generator
 
-# ============================================================================
-# AUTH DATABASE CONFIGURATION
-# ============================================================================
 
-# Récupérer les credentials depuis les variables d'environnement
 AUTH_DB_HOST = os.getenv("FASTAPI_DB_HOST", "postgres")
 AUTH_DB_PORT = int(os.getenv("FASTAPI_DB_PORT", "5432"))
 AUTH_DB_NAME = os.getenv("FASTAPI_DB_NAME", "fastapi")
 AUTH_DB_USER = os.getenv("FASTAPI_DB_USER", "fastapi")
 AUTH_DB_PASSWORD = os.getenv("FASTAPI_DB_PASSWORD", "fastapi")
 
-# URL de connexion
 AUTH_DATABASE_URL = f"postgresql://{AUTH_DB_USER}:{AUTH_DB_PASSWORD}@{AUTH_DB_HOST}:{AUTH_DB_PORT}/{AUTH_DB_NAME}"
 
 print(f"[INFO] Auth Database URL: postgresql://{AUTH_DB_USER}@{AUTH_DB_HOST}:{AUTH_DB_PORT}/{AUTH_DB_NAME}")
 
 
-# ============================================================================
-# ENGINE & SESSION
-# ============================================================================
 
-# Engine SQLAlchemy avec pool de connexions
 auth_engine = create_engine(
     AUTH_DATABASE_URL,
     pool_size=5,
@@ -40,13 +31,9 @@ auth_engine = create_engine(
     echo=False,
 )
 
-# Session factory
 AuthSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=auth_engine)
 
 
-# ============================================================================
-# DEPENDENCY
-# ============================================================================
 
 def get_auth_db() -> Generator[Session, None, None]:
     """
@@ -64,9 +51,6 @@ def get_auth_db() -> Generator[Session, None, None]:
         db.close()
 
 
-# ============================================================================
-# CONTEXT MANAGER
-# ============================================================================
 
 @contextmanager
 def get_auth_db_context():
@@ -84,9 +68,6 @@ def get_auth_db_context():
         db.close()
 
 
-# ============================================================================
-# UTILITY FUNCTIONS
-# ============================================================================
 
 def test_auth_connection() -> bool:
     """

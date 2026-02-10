@@ -11,16 +11,12 @@ import pandas as pd
 pytestmark = pytest.mark.skip(reason="Tests API nécessitent configuration authentification")
 
 
-# ============================================================================
-# TESTS MARKET ENDPOINTS
-# ============================================================================
 
 @pytest.mark.api
 @pytest.mark.unit
 def test_market_latest_endpoint(test_api_client):
     """Test GET /market/latest"""
     with patch('app.routes.market.get_db') as mock_db:
-        # Mock database query
         mock_session = MagicMock()
         mock_snapshot = MagicMock()
         mock_snapshot.time = '2024-01-01 00:00:00'
@@ -45,7 +41,6 @@ def test_market_ohlcv_m15_endpoint(test_api_client):
     with patch('app.routes.market.get_db') as mock_db:
         mock_session = MagicMock()
 
-        # Mock query result
         mock_record = MagicMock()
         mock_record.time = '2024-01-01 00:00:00'
         mock_record.open = 1.08
@@ -88,9 +83,6 @@ def test_health_endpoint(test_api_client):
         assert 'tables' in data
 
 
-# ============================================================================
-# TESTS MODEL ENDPOINTS
-# ============================================================================
 
 @pytest.mark.api
 @pytest.mark.ml
@@ -131,7 +123,6 @@ def test_model_predict_invalid_input(test_api_client):
 
     response = test_api_client.post("/model/predict", json=payload)
 
-    # Devrait retourner erreur de validation
     assert response.status_code == 422  # Unprocessable Entity
 
 
@@ -167,9 +158,6 @@ def test_model_reload_endpoint(test_api_client, trained_model):
         assert data['status'] == 'reloaded'
 
 
-# ============================================================================
-# TESTS SIGNALS ENDPOINTS
-# ============================================================================
 
 @pytest.mark.api
 @pytest.mark.unit
@@ -193,9 +181,6 @@ def test_signals_high_confidence_endpoint(test_api_client):
         assert isinstance(data, list)
 
 
-# ============================================================================
-# TESTS DATA ENDPOINTS
-# ============================================================================
 
 @pytest.mark.api
 @pytest.mark.unit
@@ -219,9 +204,6 @@ def test_data_features_mt5_endpoint(test_api_client):
         assert isinstance(data, list)
 
 
-# ============================================================================
-# TESTS AUTHENTICATION
-# ============================================================================
 
 @pytest.mark.api
 @pytest.mark.unit
@@ -248,14 +230,9 @@ def test_auth_token_endpoint(test_api_client):
 @pytest.mark.unit
 def test_protected_endpoint_without_auth(test_api_client):
     """Test accès endpoint protégé sans authentification"""
-    # Certains endpoints nécessitent authentification
-    # Remplacer par un vrai endpoint protégé si existant
     pass
 
 
-# ============================================================================
-# TESTS VALIDATION & ERROR HANDLING
-# ============================================================================
 
 @pytest.mark.api
 @pytest.mark.unit
@@ -272,14 +249,9 @@ def test_api_cors_headers(test_api_client):
     """Test que les headers CORS sont présents"""
     response = test_api_client.get("/health")
 
-    # Vérifier que CORS est configuré (headers présents ou non)
-    # Note: Dépend de la config CORS de l'app
     assert response.status_code == 200
 
 
-# ============================================================================
-# TESTS PERFORMANCE
-# ============================================================================
 
 @pytest.mark.api
 @pytest.mark.slow

@@ -12,17 +12,12 @@ from services.bronze_service import (
 )
 
 
-# ============================================================================
-# TESTS EXTRACTION MT5
-# ============================================================================
 
 @pytest.mark.unit
 @pytest.mark.bronze
 def test_extract_mt5_data_valid_range(temp_parquet_file):
     """Test extraction MT5 avec dates valides"""
-    # Mock la fonction import_data
     with patch('services.bronze_service.import_data') as mock_import:
-        # Simuler retour de données
         mock_import.return_value = {
             'time': ['2024-01-01 00:00:00', '2024-01-01 00:15:00'],
             'open': [1.08, 1.081],
@@ -34,7 +29,6 @@ def test_extract_mt5_data_valid_range(temp_parquet_file):
 
         result = extract_mt5_data(start='2024-01-01', end='2024-01-31')
 
-        # Vérifications
         assert result is not None
         assert result.endswith('.parquet')
         mock_import.assert_called_once()
@@ -67,20 +61,15 @@ def test_extract_mt5_data_empty_result():
 
         result = extract_mt5_data(start='2024-01-01', end='2024-01-02')
 
-        # Doit quand même créer le fichier (peut-être vide)
         assert result is not None
 
 
-# ============================================================================
-# TESTS EXTRACTION YAHOO
-# ============================================================================
 
 @pytest.mark.unit
 @pytest.mark.bronze
 def test_extract_yahoo_data_valid(mock_vault_client):
     """Test extraction Yahoo Finance avec dates valides"""
     with patch('services.bronze_service.YahooFinanceClient') as MockClient:
-        # Mock client - DataFrames avec time comme index
         mock_instance = MockClient.return_value
         df_spx = pd.DataFrame({
             'time': pd.date_range('2024-01-01', periods=5, tz='UTC'),
@@ -101,7 +90,6 @@ def test_extract_yahoo_data_valid(mock_vault_client):
             end=datetime(2024, 1, 5)
         )
 
-        # Vérifications
         assert isinstance(result, dict)
         assert 'spx' in result or len(result) > 0
 
@@ -121,9 +109,6 @@ def test_extract_yahoo_data_api_error(mock_vault_client):
             )
 
 
-# ============================================================================
-# TESTS EXTRACTION EUROSTAT
-# ============================================================================
 
 @pytest.mark.unit
 @pytest.mark.bronze
@@ -131,7 +116,6 @@ def test_extract_eurostat_data_valid(mock_vault_client):
     """Test extraction Eurostat avec date valide"""
     with patch('services.bronze_service.EurostatClient') as MockClient:
         mock_instance = MockClient.return_value
-        # Le mock doit retourner des DataFrames, pas des chemins de fichiers
         mock_instance.extract_all_documents.return_value = {
             'pib': pd.DataFrame({
                 'time': pd.date_range('2024-01-01', periods=3, freq='Q', tz='UTC'),
@@ -162,7 +146,6 @@ def test_extract_pipeline_complete(mock_vault_client):
          patch('services.bronze_service.YahooFinanceClient') as mock_yahoo, \
          patch('services.bronze_service.EurostatClient') as mock_eurostat:
 
-        # Setup mocks
         mock_mt5.return_value = {'time': ['2024-01-01'], 'close': [1.08]}
 
         mock_yahoo_instance = mock_yahoo.return_value
@@ -182,7 +165,6 @@ def test_extract_pipeline_complete(mock_vault_client):
             })
         }
 
-        # Exécuter pipeline
         mt5_result = extract_mt5_data('2024-01-01', '2024-01-31')
         yahoo_result = extract_yahoo_data(
             datetime(2024, 1, 1),
@@ -190,7 +172,6 @@ def test_extract_pipeline_complete(mock_vault_client):
         )
         eurostat_result = extract_eurostat_data(datetime(2024, 1, 1))
 
-        # Vérifications
         assert mt5_result is not None
         assert yahoo_result is not None
         assert eurostat_result is not None

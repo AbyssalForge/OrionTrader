@@ -9,7 +9,6 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import sys
 
-# Ajouter le path des models Airflow
 sys.path.insert(0, '/opt/airflow')
 
 from utils.database import get_db_session
@@ -22,9 +21,6 @@ st.set_page_config(
 
 st.title("📊 Analytics - Analyse Approfondie")
 
-# ============================================================================
-# SIDEBAR FILTERS
-# ============================================================================
 
 with st.sidebar:
     st.subheader("Filtres")
@@ -43,9 +39,6 @@ with st.sidebar:
         default=["low", "normal", "high"]
     )
 
-# ============================================================================
-# METRICS EVOLUTION
-# ============================================================================
 
 st.subheader("📈 Évolution des métriques")
 
@@ -53,11 +46,9 @@ try:
     session = get_db_session()
     from models import MarketSnapshotM15
 
-    # Période
     end_time = datetime.now()
     start_time = end_time - timedelta(days=period_days)
 
-    # Requête avec filtres
     query = session.query(
         MarketSnapshotM15.time,
         MarketSnapshotM15.signal_confidence_score,
@@ -74,7 +65,6 @@ try:
     df = pd.read_sql(query.statement, session.bind)
 
     if len(df) > 0:
-        # Signal confidence over time
         fig1 = px.line(
             df,
             x='time',
@@ -89,7 +79,6 @@ try:
         col1, col2 = st.columns(2)
 
         with col1:
-            # Trend strength composite
             fig2 = px.line(
                 df,
                 x='time',
@@ -101,7 +90,6 @@ try:
             st.plotly_chart(fig2, use_container_width=True)
 
         with col2:
-            # Divergence count
             fig3 = px.bar(
                 df,
                 x='time',
@@ -119,9 +107,6 @@ try:
 except Exception as e:
     st.error(f"Erreur: {e}")
 
-# ============================================================================
-# CORRELATION ANALYSIS
-# ============================================================================
 
 st.divider()
 st.subheader("🔗 Analyse de Corrélation")
@@ -130,7 +115,6 @@ try:
     session = get_db_session()
     from models import MarketSnapshotM15, MT5EURUSDM15, YahooFinanceDaily
 
-    # Joindre les 3 tables
     query = session.query(
         MarketSnapshotM15.signal_confidence_score,
         MarketSnapshotM15.trend_strength_composite,
@@ -152,7 +136,6 @@ try:
     df_corr = pd.read_sql(query.statement, session.bind)
 
     if len(df_corr) > 5:
-        # Matrice de corrélation
         corr_matrix = df_corr.corr()
 
         fig = px.imshow(
@@ -166,10 +149,8 @@ try:
 
         st.plotly_chart(fig, use_container_width=True)
 
-        # Top corrélations
         st.markdown("### 🔝 Corrélations les plus fortes")
 
-        # Récupérer les corrélations (sans la diagonale)
         corr_pairs = []
         for i in range(len(corr_matrix.columns)):
             for j in range(i+1, len(corr_matrix.columns)):
@@ -193,9 +174,6 @@ try:
 except Exception as e:
     st.error(f"Erreur lors de l'analyse de corrélation: {e}")
 
-# ============================================================================
-# STATISTICS
-# ============================================================================
 
 st.divider()
 st.subheader("📊 Statistiques Descriptives")
@@ -240,7 +218,6 @@ try:
                 f"σ = {df_stats['trend_strength_composite'].std():.4f}"
             )
 
-        # Distribution histograms
         st.markdown("### 📊 Distributions")
 
         col1, col2 = st.columns(2)

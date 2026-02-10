@@ -6,7 +6,6 @@ import streamlit as st
 import pandas as pd
 import sys
 
-# Ajouter le path des models Airflow
 sys.path.insert(0, '/opt/airflow')
 
 from utils.database import get_db_session
@@ -19,16 +18,12 @@ def render_analysis_tab():
 
     col1, col2 = st.columns(2)
 
-    # ====================================================================
-    # OPPORTUNITÉS ACTUELLES
-    # ====================================================================
     with col1:
         st.markdown("### 🎯 Opportunités Actuelles")
 
         try:
             session = get_db_session()
 
-            # Requête pour les meilleurs signaux
             query = session.query(MarketSnapshotM15).filter(
                 MarketSnapshotM15.signal_confidence_score > 0.6,
                 MarketSnapshotM15.event_window_active == False
@@ -39,7 +34,6 @@ def render_analysis_tab():
             df_opps = pd.read_sql(query.statement, session.bind)
 
             if len(df_opps) > 0:
-                # Sélectionner uniquement les colonnes pertinentes
                 df_display = df_opps[[
                     'time',
                     'signal_confidence_score',
@@ -47,7 +41,6 @@ def render_analysis_tab():
                     'volatility_regime'
                 ]].copy()
 
-                # Renommer pour affichage
                 df_display.columns = [
                     'Temps',
                     'Confidence',
@@ -68,16 +61,12 @@ def render_analysis_tab():
         except Exception as e:
             st.error(f"Erreur: {e}")
 
-    # ====================================================================
-    # ALERTES DE DIVERGENCE
-    # ====================================================================
     with col2:
         st.markdown("### ⚠️ Alertes")
 
         try:
             session = get_db_session()
 
-            # Requête pour les divergences
             query = session.query(MarketSnapshotM15).filter(
                 MarketSnapshotM15.signal_divergence_count > 1
             ).order_by(
@@ -87,14 +76,12 @@ def render_analysis_tab():
             df_alerts = pd.read_sql(query.statement, session.bind)
 
             if len(df_alerts) > 0:
-                # Sélectionner uniquement les colonnes pertinentes
                 df_display = df_alerts[[
                     'time',
                     'signal_divergence_count',
                     'regime_composite'
                 ]].copy()
 
-                # Renommer pour affichage
                 df_display.columns = [
                     'Temps',
                     'Divergences',

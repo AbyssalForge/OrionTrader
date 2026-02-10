@@ -7,23 +7,18 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 
-# ============================================================================
-# REQUEST SCHEMAS
-# ============================================================================
 
 class SimplePredictionRequest(BaseModel):
     """
     Requête de prédiction avec données brutes (comme dans l'ETL)
     Les features complexes seront calculées automatiquement
     """
-    # Prix OHLCV (obligatoire)
     open: float = Field(..., description="Prix d'ouverture")
     high: float = Field(..., description="Prix le plus haut")
     low: float = Field(..., description="Prix le plus bas")
     close: float = Field(..., description="Prix de clôture")
     tick_volume: float = Field(..., description="Volume")
 
-    # Indicateurs externes optionnels (si disponibles)
     spx_close: Optional[float] = Field(None, description="S&P 500 close")
     spx_trend: Optional[float] = Field(None, description="S&P 500 trend")
     risk_on: Optional[float] = Field(None, description="Risk-on score")
@@ -126,9 +121,6 @@ class BatchPredictionRequest(BaseModel):
         }
 
 
-# ============================================================================
-# RESPONSE SCHEMAS
-# ============================================================================
 
 class PredictionResponse(BaseModel):
     """

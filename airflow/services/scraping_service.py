@@ -17,7 +17,6 @@ from io import StringIO
 import time
 
 
-# Configuration des indices à scraper
 INDICES_CONFIG = {
     'CAC40': {
         'url': 'https://en.wikipedia.org/wiki/CAC_40',
@@ -26,7 +25,6 @@ INDICES_CONFIG = {
             'Company': 'company_name',
             'Ticker': 'ticker',
             'Sector': 'sector'
-            # Pas de colonne Country dans la table - sera ajoutée via country_default
         },
         'country_default': 'France',
         'index_name': 'CAC 40'
@@ -82,31 +80,24 @@ def scrape_wikipedia_index(index_key: str, config: dict) -> pd.DataFrame:
     print(f"[SCRAPING] Scraping {config['index_name']} depuis {config['url']}")
 
     try:
-        # Headers pour simuler un navigateur
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
 
-        # Récupérer la page
         response = requests.get(config['url'], headers=headers, timeout=30)
         response.raise_for_status()
 
-        # Parser avec BeautifulSoup
         soup = BeautifulSoup(response.content, 'html.parser')
 
-        # Trouver toutes les tables
         tables = soup.find_all('table', {'class': 'wikitable'})
 
         if len(tables) <= config['table_index']:
             raise ValueError(f"Table index {config['table_index']} non trouvée pour {index_key}")
 
-        # Extraire la table des composants
         table = tables[config['table_index']]
 
-        # Convertir en DataFrame (utiliser StringIO pour éviter FutureWarning)
         df = pd.read_html(StringIO(str(table)))[0]
 
-        # Mapping des colonnes
         df_renamed = pd.DataFrame()
 
         for wiki_col, standard_col in config['columns_mapping'].items():
@@ -115,18 +106,14 @@ def scrape_wikipedia_index(index_key: str, config: dict) -> pd.DataFrame:
             else:
                 print(f"[WARNING] Colonne {wiki_col} non trouvée dans {index_key}")
 
-        # Ajouter le pays si non présent
         if 'country' not in df_renamed.columns:
             df_renamed['country'] = config['country_default']
 
-        # Ajouter l'index de référence
         df_renamed['index_name'] = config['index_name']
         df_renamed['index_key'] = index_key
 
-        # Ajouter timestamp
         df_renamed['scraped_at'] = datetime.now()
 
-        # Nettoyer les tickers (supprimer espaces, parenthèses, etc.)
         if 'ticker' in df_renamed.columns:
             df_renamed['ticker'] = df_renamed['ticker'].str.strip()
             df_renamed['ticker'] = df_renamed['ticker'].str.replace(r'\[.*?\]', '', regex=True)
@@ -158,7 +145,6 @@ def scrape_all_indices() -> Dict[str, pd.DataFrame]:
         if not df.empty:
             results[index_key] = df
 
-        # Pause pour éviter de surcharger Wikipedia
         time.sleep(1)
 
     total_companies = sum(len(df) for df in results.values())
@@ -207,10 +193,8 @@ def get_ticker_sector_mapping(data_dict: Dict[str, pd.DataFrame]) -> pd.DataFram
     Returns:
         DataFrame avec mapping ticker → secteur
     """
-    # Combiner tous les indices
     all_data = pd.concat(data_dict.values(), ignore_index=True)
 
-    # Grouper par ticker (garder première occurrence)
     mapping = all_data.groupby('ticker').agg({
         'company_name': 'first',
         'sector': 'first',
@@ -223,9 +207,6 @@ def get_ticker_sector_mapping(data_dict: Dict[str, pd.DataFrame]) -> pd.DataFram
     return mapping
 
 
-# ============================================================================
-# STATISTIQUES ET ANALYSE
-# ============================================================================
 
 def get_scraping_stats(data_dict: Dict[str, pd.DataFrame]) -> dict:
     """
@@ -243,7 +224,6 @@ def get_scraping_stats(data_dict: Dict[str, pd.DataFrame]) -> dict:
             'by_country': {}
         }
 
-    # Combiner toutes les données
     all_data = pd.concat(data_dict.values(), ignore_index=True)
 
     stats = {

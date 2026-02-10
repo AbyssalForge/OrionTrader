@@ -15,9 +15,6 @@ from services.silver_service import (
 from conftest import assert_dataframe_valid, assert_no_leakage
 
 
-# ============================================================================
-# TESTS TRANSFORMATION MT5
-# ============================================================================
 
 @pytest.mark.unit
 @pytest.mark.silver
@@ -25,10 +22,8 @@ def test_transform_mt5_features_basic(temp_parquet_file):
     """Test transformation MT5 avec données valides"""
     result_path = transform_mt5_features(temp_parquet_file)
 
-    # Vérifier fichier créé
     assert result_path.endswith('.parquet')
 
-    # Charger et vérifier
     df = pd.read_parquet(result_path)
     assert_dataframe_valid(df, required_columns=[
         'open', 'high', 'low', 'close', 'tick_volume',
@@ -61,7 +56,6 @@ def test_add_mt5_features_creates_all_columns(sample_mt5_data):
 @pytest.mark.silver
 def test_mt5_features_no_forward_fill_on_derived():
     """Test que les features dérivées ne sont PAS forward-fillées"""
-    # Créer données avec gaps
     dates = pd.date_range(start='2024-01-01', periods=10, freq='15min', tz='UTC')
     df = pd.DataFrame({
         'time': dates,
@@ -79,8 +73,6 @@ def test_mt5_features_no_forward_fill_on_derived():
 
     df_result = pd.read_parquet(result_path)
 
-    # Vérifier que close_return a des NaN (pas forward-fillé après dropna initial)
-    # Note: Le code actuel ffill uniquement les OHLC, pas les dérivées
     assert 'close_return' in df_result.columns
 
 
@@ -91,8 +83,6 @@ def test_mt5_volatility_calculation(sample_mt5_data):
     sample_mt5_data = sample_mt5_data.set_index('time')
     df_transformed = _add_mt5_features(sample_mt5_data)
 
-    # Volatilité doit être positive (ou NaN pour les premières valeurs)
-    # Vérifier que toutes les valeurs non-NaN sont >= 0
     volatility_1h_values = df_transformed['volatility_1h'].dropna()
     volatility_4h_values = df_transformed['volatility_4h'].dropna()
 
@@ -100,15 +90,11 @@ def test_mt5_volatility_calculation(sample_mt5_data):
     assert (volatility_4h_values >= 0).all(), "Volatility 4h has negative values"
 
 
-# ============================================================================
-# TESTS TRANSFORMATION YAHOO
-# ============================================================================
 
 @pytest.mark.unit
 @pytest.mark.silver
 def test_transform_yahoo_features_basic(sample_yahoo_data):
     """Test transformation Yahoo Finance"""
-    # Sauvegarder en parquets séparés
     import tempfile
     import os
 
@@ -116,7 +102,6 @@ def test_transform_yahoo_features_basic(sample_yahoo_data):
         yahoo_parquets = {}
         for symbol in ['spx', 'gold', 'dxy', 'vix']:
             if f'{symbol}_close' in sample_yahoo_data.columns:
-                # Renommer la colonne en 'close' comme attendu par transform_yahoo_features
                 df_symbol = sample_yahoo_data[['time', f'{symbol}_close']].copy()
                 df_symbol = df_symbol.rename(columns={f'{symbol}_close': 'close'})
                 path = os.path.join(tmpdir, f'{symbol}.parquet')
@@ -125,7 +110,6 @@ def test_transform_yahoo_features_basic(sample_yahoo_data):
 
         result_path = transform_yahoo_features(yahoo_parquets)
 
-        # Vérifier
         df = pd.read_parquet(result_path)
         assert 'spx_close' in df.columns or 'dxy_close' in df.columns
 
@@ -140,7 +124,6 @@ def test_yahoo_data_available_flag(sample_yahoo_data):
     with tempfile.TemporaryDirectory() as tmpdir:
         yahoo_parquets = {}
         df_spx = sample_yahoo_data[['time', 'spx_close']].copy()
-        # Renommer la colonne en 'close' comme attendu par transform_yahoo_features
         df_spx = df_spx.rename(columns={'spx_close': 'close'})
         path = os.path.join(tmpdir, 'spx.parquet')
         df_spx.to_parquet(path)
@@ -149,14 +132,10 @@ def test_yahoo_data_available_flag(sample_yahoo_data):
         result_path = transform_yahoo_features(yahoo_parquets)
         df = pd.read_parquet(result_path)
 
-        # Vérifier flag
         assert 'yahoo_data_available' in df.columns
         assert df['yahoo_data_available'].dtype in [np.int64, np.int32, int]
 
 
-# ============================================================================
-# TESTS TRANSFORMATION DOCUMENTS
-# ============================================================================
 
 @pytest.mark.unit
 @pytest.mark.silver
@@ -166,7 +145,6 @@ def test_transform_documents_features_basic(sample_documents_data):
     import os
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Séparer par type
         df_pib = sample_documents_data[sample_documents_data['data_type'] == 'pib']
         df_cpi = sample_documents_data[sample_documents_data['data_type'] == 'cpi']
 
@@ -180,7 +158,6 @@ def test_transform_documents_features_basic(sample_documents_data):
 
         result_path = transform_documents_features(documents_parquets)
 
-        # Vérifier
         df = pd.read_parquet(result_path)
         assert 'data_type' in df.columns
         assert 'frequency' in df.columns
@@ -204,21 +181,15 @@ def test_documents_use_npnan_not_none(sample_documents_data):
 
         df = pd.read_parquet(result_path)
 
-        # Vérifier que les colonnes CPI sont np.nan (pas None)
-        # np.nan doit être de type float
         if 'eurozone_cpi' in df.columns:
             assert pd.api.types.is_float_dtype(df['eurozone_cpi']) or df['eurozone_cpi'].isna().all()
 
 
-# ============================================================================
-# TESTS PREVENTION LEAKAGE
-# ============================================================================
 
 @pytest.mark.unit
 @pytest.mark.silver
 def test_composite_features_use_shift_for_close_return():
     """Test critique: close_return doit utiliser shift(1) pour éviter leakage"""
-    # Créer données de test
     dates = pd.date_range(start='2024-01-01', periods=10, freq='15min', tz='UTC')
 
     df_merged = pd.DataFrame({
@@ -230,15 +201,10 @@ def test_composite_features_use_shift_for_close_return():
 
     df_snapshot = pd.DataFrame(index=df_merged.index)
 
-    # Appeler fonction
     df_result = _calculate_composite_features(df_snapshot, df_merged)
 
-    # Vérifier que macro_micro_aligned existe
     assert 'macro_micro_aligned' in df_result.columns
 
-    # Vérifier que les valeurs ne sont pas identiques à l'original (preuve du shift)
-    # Le premier élément devrait être 0 (fillna après shift)
-    # Note: On ne peut pas vérifier directement le shift, mais on vérifie que ça ne crash pas
 
 
 @pytest.mark.unit
@@ -249,17 +215,11 @@ def test_no_future_leakage_in_features(sample_mt5_data):
 
     df_transformed = _add_mt5_features(sample_mt5_data)
 
-    # Vérifier ordre temporel
     assert_no_leakage(df_transformed.reset_index(), time_col='time')
 
-    # Vérifier que close_return à t ne dépend que de t et t-1
-    # (test indirect: pas de valeurs futures)
     assert not df_transformed.index.duplicated().any()
 
 
-# ============================================================================
-# TESTS MARKET SNAPSHOT
-# ============================================================================
 
 @pytest.mark.integration
 @pytest.mark.silver
@@ -270,20 +230,16 @@ def test_transform_market_snapshot_integration(sample_mt5_data, sample_yahoo_dat
     import os
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Préparer fichiers
         mt5_path = os.path.join(tmpdir, 'mt5.parquet')
         sample_mt5_data.to_parquet(mt5_path)
 
-        # Transform MT5 first
         mt5_transformed = transform_mt5_features(mt5_path)
 
-        # Yahoo
         yahoo_parquets = {}
         for col in ['spx_close', 'gold_close', 'dxy_close', 'vix_close']:
             if col in sample_yahoo_data.columns:
                 symbol = col.replace('_close', '')
                 df_symbol = sample_yahoo_data[['time', col]].copy()
-                # Renommer la colonne en 'close' comme attendu par transform_yahoo_features
                 df_symbol = df_symbol.rename(columns={col: 'close'})
                 path = os.path.join(tmpdir, f'{symbol}.parquet')
                 df_symbol.to_parquet(path)
@@ -291,7 +247,6 @@ def test_transform_market_snapshot_integration(sample_mt5_data, sample_yahoo_dat
 
         yahoo_transformed = transform_yahoo_features(yahoo_parquets) if yahoo_parquets else None
 
-        # Documents
         docs_parquets = {}
         if 'eurozone_pib' in sample_documents_data.columns:
             df_pib = sample_documents_data[sample_documents_data['data_type'] == 'pib']
@@ -302,7 +257,6 @@ def test_transform_market_snapshot_integration(sample_mt5_data, sample_yahoo_dat
 
         docs_transformed = transform_documents_features(docs_parquets) if docs_parquets else None
 
-        # Market snapshot
         if yahoo_transformed and docs_transformed:
             snapshot_path = transform_market_snapshot(
                 mt5_transformed,
@@ -310,7 +264,6 @@ def test_transform_market_snapshot_integration(sample_mt5_data, sample_yahoo_dat
                 docs_transformed
             )
 
-            # Vérifier
             df_snapshot = pd.read_parquet(snapshot_path)
             assert 'mt5_time' in df_snapshot.columns
             assert 'yahoo_time' in df_snapshot.columns

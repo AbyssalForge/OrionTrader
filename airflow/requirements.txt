@@ -38,3 +38,4 @@ mlflow
 #alibi-detect
 
 bs4
+lxml

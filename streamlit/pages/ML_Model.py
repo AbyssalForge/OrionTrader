@@ -10,22 +10,16 @@ from datetime import datetime
 import plotly.graph_objects as go
 import os
 
-# Configuration de la page
 st.set_page_config(
     page_title="ML Model - OrionTrader",
     page_icon="🤖",
     layout="wide"
 )
 
-# URL de l'API FastAPI
 FASTAPI_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000")
 
-# Token d'authentification API
 API_TOKEN = os.getenv("FASTAPI_API_TOKEN", "")
 
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
 
 def get_headers():
     """Retourner les headers HTTP avec le token d'authentification"""
@@ -103,18 +97,12 @@ def plot_probabilities(probabilities):
 
     return fig
 
-# ============================================================================
-# HEADER
-# ============================================================================
 
 st.title("🤖 Modèle de Prédiction ML")
 st.markdown("Utilisez le modèle LightGBM pour prédire la direction du marché EUR/USD")
 
 st.divider()
 
-# ============================================================================
-# SIDEBAR - INFORMATIONS DU MODÈLE
-# ============================================================================
 
 with st.sidebar:
     st.header("ℹ️ Informations du modèle")
@@ -141,13 +129,9 @@ with st.sidebar:
         if metrics.get("accuracy"):
             st.metric("Accuracy", f"{metrics['accuracy']:.2%}")
 
-# ============================================================================
-# MAIN CONTENT - PRÉDICTION INTERACTIVE
-# ============================================================================
 
 st.header("📈 Faire une prédiction")
 
-# Créer deux colonnes pour les inputs
 col1, col2 = st.columns(2)
 
 with col1:
@@ -222,7 +206,6 @@ with col2:
         vix_close = st.number_input("VIX Close", value=None, step=1.0)
         vix_spike = st.number_input("VIX Spike", value=None, step=0.1)
 
-# Validation des inputs
 valid_input = True
 if high_price < low_price:
     st.error("❌ Erreur: Le prix HIGH doit être supérieur au prix LOW")
@@ -236,7 +219,6 @@ if open_price < low_price or open_price > high_price:
 
 st.divider()
 
-# Bouton de prédiction
 col_predict, col_clear = st.columns([1, 4])
 
 with col_predict:
@@ -246,12 +228,8 @@ with col_clear:
     if st.button("🔄 Réinitialiser"):
         st.rerun()
 
-# ============================================================================
-# RÉSULTATS DE LA PRÉDICTION
-# ============================================================================
 
 if predict_button and valid_input:
-    # Préparer les données
     prediction_data = {
         "open": open_price,
         "high": high_price,
@@ -260,7 +238,6 @@ if predict_button and valid_input:
         "tick_volume": tick_volume
     }
 
-    # Ajouter les indicateurs optionnels s'ils sont fournis
     if spx_close is not None:
         prediction_data["spx_close"] = spx_close
     if spx_trend is not None:
@@ -288,14 +265,12 @@ if predict_button and valid_input:
     if vix_spike is not None:
         prediction_data["vix_spike"] = vix_spike
 
-    # Faire la prédiction
     with st.spinner("🔮 Prédiction en cours..."):
         result = predict_single(prediction_data)
 
     if result:
         st.success("✅ Prédiction réussie!")
 
-        # Résultats principaux
         col_result1, col_result2, col_result3 = st.columns(3)
 
         with col_result1:
@@ -319,13 +294,11 @@ if predict_button and valid_input:
 
         st.divider()
 
-        # Graphique des probabilités
         st.plotly_chart(
             plot_probabilities(result["probabilities"]),
             use_container_width=True
         )
 
-        # Détails des probabilités
         st.subheader("📋 Détails des probabilités")
 
         prob_df = pd.DataFrame([
@@ -360,7 +333,6 @@ if predict_button and valid_input:
             }
         )
 
-        # Interprétation
         st.subheader("💡 Interprétation")
 
         if prediction_label == "SHORT":
@@ -397,7 +369,6 @@ if predict_button and valid_input:
             - Surveiller l'évolution du marché
             """)
 
-        # Avertissement sur la confiance
         if confidence < 0.5:
             st.warning(f"""
             ⚠️ **Attention: Confiance faible ({confidence:.1%})**
@@ -406,9 +377,6 @@ if predict_button and valid_input:
             hors de la distribution d'entraînement. Utilisez cette prédiction avec prudence.
             """)
 
-# ============================================================================
-# FOOTER - DISCLAIMER
-# ============================================================================
 
 st.divider()
 

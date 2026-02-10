@@ -1,22 +1,19 @@
-name: CI - Tests Automatisés (Simplifié)
+name: CI - Tests Automatisés
 
 on:
   push:
-    branches: [ main, dev, bloc_e3_ia ]
+    branches: [ main, dev, bloc_e3_ia, E3_vrais ]
   pull_request:
     branches: [ main, develop ]
 
 jobs:
-  # ============================================================================
-  # JOB 1: TESTS ET COUVERTURE (C12)
-  # ============================================================================
   test:
     name: Tests & Coverage
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        python-version: ['3.11']  # Une seule version pour simplifier
+        python-version: ['3.11']
 
     steps:
       - name: Checkout code
@@ -61,9 +58,6 @@ jobs:
             coverage.xml
             htmlcov/
 
-  # ============================================================================
-  # JOB 2: QUALITÉ DU CODE (OPTIONNEL)
-  # ============================================================================
   lint:
     name: Code Quality
     runs-on: ubuntu-latest
@@ -83,16 +77,15 @@ jobs:
 
       - name: Check code formatting (Black)
         run: |
-          black --check airflow/ fastapi/ tests/ || echo "⚠ Code formatting issues found"
+          black --check airflow/ fastapi/ tests/ || echo "Code formatting issues found"
         continue-on-error: true
 
       - name: Check imports sorting (isort)
         run: |
-          isort --check-only airflow/ fastapi/ tests/ || echo "⚠ Import sorting issues found"
+          isort --check-only airflow/ fastapi/ tests/ || echo "Import sorting issues found"
         continue-on-error: true
 
       - name: Lint with flake8
         run: |
           flake8 airflow/ fastapi/ tests/ --max-line-length=120 --extend-ignore=E203,W503 || echo "⚠ Linting issues found"
         continue-on-error: true
-

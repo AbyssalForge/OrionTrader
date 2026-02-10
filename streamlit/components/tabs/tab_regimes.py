@@ -7,7 +7,6 @@ import pandas as pd
 import plotly.express as px
 import sys
 
-# Ajouter le path des models Airflow
 sys.path.insert(0, '/opt/airflow')
 
 from utils.database import get_db_session
@@ -21,7 +20,6 @@ def render_regimes_tab():
     try:
         session = get_db_session()
 
-        # Requête pour les derniers 1000 snapshots
         query = session.query(
             MarketSnapshotM15.regime_composite,
             MarketSnapshotM15.volatility_regime
@@ -38,9 +36,6 @@ def render_regimes_tab():
 
         col1, col2 = st.columns(2)
 
-        # ====================================================================
-        # DISTRIBUTION RÉGIME COMPOSITE
-        # ====================================================================
         with col1:
             regime_counts = df_regimes['regime_composite'].value_counts()
             fig = px.pie(
@@ -56,9 +51,6 @@ def render_regimes_tab():
             )
             st.plotly_chart(fig, use_container_width=True)
 
-        # ====================================================================
-        # DISTRIBUTION VOLATILITÉ
-        # ====================================================================
         with col2:
             vol_counts = df_regimes['volatility_regime'].value_counts()
             fig = px.pie(

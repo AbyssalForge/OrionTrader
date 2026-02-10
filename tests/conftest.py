@@ -5,7 +5,6 @@ import sys
 import os
 from pathlib import Path
 
-# Ajouter le répertoire airflow au PYTHONPATH pour les imports
 project_root = Path(__file__).parent.parent
 airflow_path = project_root / "airflow"
 if str(airflow_path) not in sys.path:
@@ -19,9 +18,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import tempfile
 
-# ============================================================================
-# FIXTURES - DONNÉES DE TEST
-# ============================================================================
 
 @pytest.fixture
 def sample_mt5_data():
@@ -85,14 +81,10 @@ def temp_parquet_file(sample_mt5_data):
         sample_mt5_data.to_parquet(f.name)
         yield f.name
 
-    # Cleanup
     if os.path.exists(f.name):
         os.remove(f.name)
 
 
-# ============================================================================
-# FIXTURES - DATABASE
-# ============================================================================
 
 @pytest.fixture(scope="session")
 def test_db_engine():
@@ -107,30 +99,23 @@ def test_db_session(test_db_engine):
     """Crée une session de base de données pour les tests"""
     from models.base import Base
 
-    # Créer toutes les tables
     Base.metadata.create_all(test_db_engine)
 
-    # Créer session
     Session = sessionmaker(bind=test_db_engine)
     session = Session()
 
     yield session
 
-    # Cleanup
     session.rollback()
     session.close()
     Base.metadata.drop_all(test_db_engine)
 
 
-# ============================================================================
-# FIXTURES - API TESTING
-# ============================================================================
 
 @pytest.fixture
 def test_api_client():
     """Client de test FastAPI"""
     from fastapi.testclient import TestClient
-    # Ajouter le répertoire fastapi au path si nécessaire
     fastapi_path = project_root / "fastapi"
     if str(fastapi_path) not in sys.path:
         sys.path.insert(0, str(fastapi_path))
@@ -141,9 +126,6 @@ def test_api_client():
     yield client
 
 
-# ============================================================================
-# FIXTURES - ML TESTING
-# ============================================================================
 
 @pytest.fixture
 def sample_training_data():
@@ -159,7 +141,6 @@ def sample_training_data():
         'vix_close': np.clip(15 + np.random.randn(n_samples) * 5, 5, 80),
     })
 
-    # Labels: BUY (1), HOLD (0), SELL (-1)
     y = np.random.choice([-1, 0, 1], n_samples, p=[0.3, 0.4, 0.3])
 
     return X, y
@@ -184,9 +165,6 @@ def trained_model(sample_training_data):
     return model
 
 
-# ============================================================================
-# FIXTURES - ENVIRONNEMENT
-# ============================================================================
 
 @pytest.fixture
 def mock_vault_client(monkeypatch):
@@ -194,7 +172,6 @@ def mock_vault_client(monkeypatch):
     class MockKV:
         class MockV2:
             def read_secret_version(self, path):
-                # Retourner des credentials de test selon le path
                 return {
                     'data': {
                         'data': {
@@ -230,9 +207,6 @@ def mock_vault_client(monkeypatch):
     return MockVaultClient()
 
 
-# ============================================================================
-# FIXTURES - VALIDATION
-# ============================================================================
 
 @pytest.fixture
 def validation_thresholds():
@@ -247,9 +221,6 @@ def validation_thresholds():
     }
 
 
-# ============================================================================
-# HELPERS
-# ============================================================================
 
 def assert_dataframe_valid(df, required_columns=None):
     """Helper pour valider un DataFrame"""

@@ -21,7 +21,7 @@ def create_api_token(
     admin_token: APIToken = Depends(verify_admin_token)
 ):
     """
-    🔑 Créer un nouveau token d'API
+    Créer un nouveau token d'API
 
     **Droits requis:** Admin
 
@@ -32,7 +32,6 @@ def create_api_token(
     - Créer un token pour un bot de trading
     - Créer un token pour un service externe
     """
-    # Générer le token
     new_token = APIToken(
         name=token_data.name,
         token=APIToken.generate_token(),
@@ -54,7 +53,7 @@ def list_api_tokens(
     admin_token: APIToken = Depends(verify_admin_token)
 ):
     """
-    📋 Lister tous les tokens d'API
+    Lister tous les tokens d'API
 
     **Droits requis:** Admin
 
@@ -75,7 +74,7 @@ def get_api_token(
     admin_token: APIToken = Depends(verify_admin_token)
 ):
     """
-    🔍 Récupérer les informations d'un token
+    Récupérer les informations d'un token
 
     **Droits requis:** Admin
     """
@@ -97,7 +96,7 @@ def revoke_api_token(
     admin_token: APIToken = Depends(verify_admin_token)
 ):
     """
-    🚫 Révoquer un token d'API
+    Révoquer un token d'API
 
     **Droits requis:** Admin
 
@@ -128,7 +127,7 @@ def activate_api_token(
     admin_token: APIToken = Depends(verify_admin_token)
 ):
     """
-    ✅ Réactiver un token révoqué
+    Réactiver un token révoqué
 
     **Droits requis:** Admin
     """
@@ -152,7 +151,7 @@ def verify_token(
     current_token: APIToken = Depends(verify_admin_token)
 ):
     """
-    🔐 Vérifier la validité d'un token
+    Vérifier la validité d'un token
 
     Endpoint pour tester si votre token est valide.
 

@@ -19,7 +19,6 @@ def render_metrics_row():
     col1, col2, col3, col4 = st.columns(4)
 
     try:
-        # Récupérer le dernier snapshot via l'API
         latest = get_market_snapshot()
 
         with col1:

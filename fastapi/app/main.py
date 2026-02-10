@@ -21,9 +21,6 @@ from app.core.auth_database import test_auth_connection, init_auth_tables
 from app.routes import market, data, signals, model, auth
 
 
-# ============================================================================
-# APPLICATION SETUP
-# ============================================================================
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -36,7 +33,7 @@ app = FastAPI(
 - **Documents Macro**: Données économiques (PIB, inflation, taux directeurs)
 - **Market Snapshot**: Features composites + régimes de marché + signaux
 
-## 📋 Endpoints disponibles
+## Endpoints disponibles
 
 ### 📊 Market Data (7 endpoints)
 - `GET /market/latest` - Dernier snapshot de marché disponible
@@ -71,13 +68,13 @@ app = FastAPI(
 
 ## 💡 Use cases
 
-- **📈 Trading automatique**: Utiliser `/signals/high-confidence` pour décisions automatiques
-- **🤖 Prédictions ML en temps réel**: `/model/predict` pour obtenir des prédictions SHORT/NEUTRAL/LONG
-- **📊 Backtesting**: Dataset complet via `/data/training` + prédictions batch via `/model/predict/batch`
-- **🧠 Machine Learning**: Features séparées via `/data/features/*` pour entraînement
-- **📉 Analyse technique**: OHLCV haute fréquence via `/market/ohlcv/m15`
-- **🌍 Analyse macro**: Données économiques via `/data/features/macro`
-- **🎯 Monitoring**: Health check via `/health`, métriques modèle via `/model/metrics`
+- **Trading automatique**: Utiliser `/signals/high-confidence` pour décisions automatiques
+- **Prédictions ML en temps réel**: `/model/predict` pour obtenir des prédictions SHORT/NEUTRAL/LONG
+- **Backtesting**: Dataset complet via `/data/training` + prédictions batch via `/model/predict/batch`
+- **Machine Learning**: Features séparées via `/data/features/*` pour entraînement
+- **Analyse technique**: OHLCV haute fréquence via `/market/ohlcv/m15`
+- **Analyse macro**: Données économiques via `/data/features/macro`
+- **Monitoring**: Health check via `/health`, métriques modèle via `/model/metrics`
 
 ## 🔑 Paramètres principaux
 
@@ -92,9 +89,6 @@ app = FastAPI(
 )
 
 
-# ============================================================================
-# CORS MIDDLEWARE
-# ============================================================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -105,33 +99,23 @@ app.add_middleware(
 )
 
 
-# ============================================================================
-# PROMETHEUS METRICS
-# ============================================================================
 
-# Instrumenter l'application FastAPI avec Prometheus
 Instrumentator().instrument(app).expose(app)
 
 
-# ============================================================================
-# INCLUDE ROUTERS
-# ============================================================================
 
-app.include_router(auth.router, prefix="/auth", tags=["🔐 Authentication"])
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(market.router, prefix="/market", tags=["Market"])
 app.include_router(data.router, prefix="/data", tags=["Data & Features"])
 app.include_router(signals.router, prefix="/signals", tags=["Trading Signals"])
 app.include_router(model.router, prefix="/model", tags=["ML Model"])
 
 
-# ============================================================================
-# ROOT & HEALTH ENDPOINTS
-# ============================================================================
 
 @app.get("/", tags=["Root"])
 def read_root():
     """
-    🏠 Page d'accueil de l'API
+     Page d'accueil de l'API
 
     Retourne les informations de base et les liens vers la documentation.
     """
@@ -147,17 +131,15 @@ def read_root():
 @app.get("/health", tags=["Health"])
 def health_check(db: Session = Depends(get_db)):
     """
-    ❤️ Health check complet
+     Health check complet
 
     Vérifie:
     - Status de l'API
     - Connexion à la base de données
     - Nombre de lignes dans chaque table
     """
-    # Test connexion
     db_connected = test_connection()
 
-    # Compter les lignes si connecté
     tables = {}
     if db_connected:
         try:
@@ -173,9 +155,6 @@ def health_check(db: Session = Depends(get_db)):
     }
 
 
-# ============================================================================
-# STARTUP & SHUTDOWN EVENTS
-# ============================================================================
 
 @app.on_event("startup")
 async def startup_event():
@@ -185,17 +164,14 @@ async def startup_event():
     print(f"[INFO] Environment: {settings.ENVIRONMENT}")
     print("=" * 70)
 
-    # Test connexion DB principale (trading data)
     if test_connection():
         print("[OK] Trading Database connection: OK")
     else:
         print("[ERROR] Trading Database connection: FAILED")
         print("[WARNING] API will start but data endpoints will fail")
 
-    # Test connexion DB auth (tokens)
     if test_auth_connection():
         print("[OK] Auth Database connection: OK")
-        # Créer les tables d'authentification si elles n'existent pas
         try:
             init_auth_tables()
             print("[OK] Auth tables initialized")
@@ -218,9 +194,6 @@ async def shutdown_event():
     print("=" * 70)
 
 
-# ============================================================================
-# RUN (for development)
-# ============================================================================
 
 if __name__ == "__main__":
     import uvicorn

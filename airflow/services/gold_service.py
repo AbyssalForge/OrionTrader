@@ -10,9 +10,6 @@ from utils.db_helper import get_db_session
 from models import MT5EURUSDM15, YahooFinanceDaily, DocumentsMacro, MarketSnapshotM15, WikipediaIndices
 
 
-# ============================================================================
-# LOAD 1/4 - MT5
-# ============================================================================
 
 def load_mt5_to_db(mt5_parquet: str, pipeline_run_id: str = None):
     """
@@ -86,9 +83,6 @@ def load_mt5_to_db(mt5_parquet: str, pipeline_run_id: str = None):
         session.close()
 
 
-# ============================================================================
-# LOAD 2/4 - YAHOO FINANCE
-# ============================================================================
 
 def load_yahoo_to_db(yahoo_parquet: str, pipeline_run_id: str = None):
     """
@@ -156,9 +150,6 @@ def load_yahoo_to_db(yahoo_parquet: str, pipeline_run_id: str = None):
         session.close()
 
 
-# ============================================================================
-# LOAD 3/4 - DOCUMENTS MACRO
-# ============================================================================
 
 def load_documents_to_db(documents_parquet: str, pipeline_run_id: str = None):
     """
@@ -187,14 +178,12 @@ def load_documents_to_db(documents_parquet: str, pipeline_run_id: str = None):
     try:
         inserted = 0
         for _, row in df.iterrows():
-            # Conversion NaN -> None pour colonnes Float et Integer
             def safe_get(key, default=None):
                 val = row.get(key, default)
                 if pd.isna(val):
                     return default
                 return val
 
-            # Conversion spéciale pour Integer (NaN -> 0 ou None)
             inflation_pressure = row.get('inflation_pressure')
             if pd.isna(inflation_pressure):
                 inflation_pressure = None
@@ -237,9 +226,6 @@ def load_documents_to_db(documents_parquet: str, pipeline_run_id: str = None):
         session.close()
 
 
-# ============================================================================
-# LOAD 4/4 - MARKET SNAPSHOT
-# ============================================================================
 
 def load_market_snapshot_to_db(snapshot_parquet: str, pipeline_run_id: str = None):
     """
@@ -271,7 +257,6 @@ def load_market_snapshot_to_db(snapshot_parquet: str, pipeline_run_id: str = Non
     try:
         inserted = 0
         for _, row in df.iterrows():
-            # Conversion NaN -> None pour colonnes optionnelles
             def safe_get(key, default=None):
                 val = row.get(key, default)
                 if pd.isna(val):
@@ -283,19 +268,14 @@ def load_market_snapshot_to_db(snapshot_parquet: str, pipeline_run_id: str = Non
                 mt5_time=row['mt5_time'],
                 yahoo_time=safe_get('yahoo_time'),
                 docs_time=safe_get('docs_time'),
-                # Features composites
                 macro_micro_aligned=safe_get('macro_micro_aligned', 0),
                 euro_strength_bias=safe_get('euro_strength_bias', 0),
-                # Régimes
                 regime_composite=safe_get('regime_composite', 'neutral'),
                 volatility_regime=safe_get('volatility_regime', 'normal'),
-                # Scores
                 signal_confidence_score=safe_get('signal_confidence_score', 0.0),
                 signal_divergence_count=safe_get('signal_divergence_count', 0),
                 trend_strength_composite=safe_get('trend_strength_composite', 0.0),
-                # Event
                 event_window_active=safe_get('event_window_active', False),
-                # Metadata
                 pipeline_run_id=pipeline_run_id
             )
             session.merge(record)
@@ -379,7 +359,6 @@ def load_wikipedia_to_db(wikipedia_parquet: str, pipeline_run_id: str = None):
         session.commit()
         print(f"[GOLD/WIKIPEDIA] OK: {inserted} tickers chargés")
 
-        # Statistiques
         total_sectors = df['sector'].nunique() if 'sector' in df.columns else 0
         total_countries = df['country'].nunique() if 'country' in df.columns else 0
 

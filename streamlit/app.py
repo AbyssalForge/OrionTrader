@@ -6,7 +6,6 @@ Application simple avec données Wikipedia et modèle ML
 import streamlit as st
 from datetime import datetime
 
-# Configuration de la page (DOIT être en premier)
 st.set_page_config(
     page_title="OrionTrader - MLOps Dashboard",
     page_icon="📊",
@@ -14,39 +13,30 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ============================================================================
-# SIDEBAR
-# ============================================================================
 
 with st.sidebar:
-    st.image("https://raw.githubusercontent.com/streamlit/streamlit/develop/docs/logos/streamlit-icon.png", width=100)
-    st.title("OrionTrader")
-    st.caption("MLOps Trading Dashboard")
-
-    st.divider()
 
     st.markdown("""
-    ### 📚 Pages disponibles
+    ### Pages disponibles
 
     - **🏦 Wikipedia Data**: Données d'indices boursiers scrapées
     - **🤖 ML Model**: Prédictions du modèle LightGBM
 
     ### ℹ️ Informations
-    - **Projet**: E3 - IA & MLOps
-    - **Données**: Wikipedia + API Yahoo Finance
+    - **Données**: 
+        - Wikipedia 
+        - API Yahoo Finance 
+        - MetaTrader 
+        - Eurostats
     - **Modèle**: LightGBM Classification
     """)
 
     st.divider()
 
-    # Timestamp
     st.caption(f"🕒 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-# ============================================================================
-# HEADER
-# ============================================================================
 
-st.title("📊 OrionTrader - MLOps Dashboard")
+st.title("OrionTrader - MLOps Dashboard")
 st.markdown("""
 Bienvenue sur le dashboard OrionTrader ! Cette application vous permet de :
 - 📈 Visualiser les données d'indices boursiers (Wikipedia)
@@ -55,11 +45,8 @@ Bienvenue sur le dashboard OrionTrader ! Cette application vous permet de :
 
 st.divider()
 
-# ============================================================================
-# MAIN PAGE - QUICK ACCESS
-# ============================================================================
 
-st.header("🚀 Accès rapide")
+st.header("Accès rapide")
 
 col1, col2 = st.columns(2)
 
@@ -90,9 +77,6 @@ with col2:
 
 st.divider()
 
-# ============================================================================
-# STATS RAPIDES
-# ============================================================================
 
 st.header("📊 Statistiques rapides")
 
@@ -100,7 +84,7 @@ col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric(
-        label="📈 Indices suivis",
+        label="Indices suivis",
         value="4",
         delta="CAC40, S&P500, etc.",
         help="Nombre d'indices boursiers scrapés"
@@ -108,7 +92,7 @@ with col1:
 
 with col2:
     st.metric(
-        label="🏢 Entreprises",
+        label="Entreprises",
         value="~700",
         delta="Unique tickers",
         help="Nombre d'entreprises dans la base"
@@ -116,7 +100,7 @@ with col2:
 
 with col3:
     st.metric(
-        label="🤖 Modèle",
+        label="Modèle",
         value="LightGBM",
         delta="Production",
         help="Modèle actuellement déployé"
@@ -124,7 +108,7 @@ with col3:
 
 with col4:
     st.metric(
-        label="🎯 Accuracy",
+        label="Accuracy",
         value="~75%",
         delta="Balanced",
         help="Performance du modèle"
@@ -132,11 +116,8 @@ with col4:
 
 st.divider()
 
-# ============================================================================
-# INSTRUCTIONS
-# ============================================================================
 
-with st.expander("📖 Comment utiliser cette application ?"):
+with st.expander("Comment utiliser cette application ?"):
     st.markdown("""
     ### Navigation
 

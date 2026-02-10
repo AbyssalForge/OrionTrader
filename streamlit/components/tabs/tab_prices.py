@@ -8,7 +8,6 @@ import plotly.graph_objects as go
 import plotly.express as px
 import sys
 
-# Ajouter le path des models Airflow
 sys.path.insert(0, '/opt/airflow')
 
 from utils.database import get_db_session
@@ -22,7 +21,6 @@ def render_prices_tab():
     try:
         session = get_db_session()
 
-        # Requête pour les dernières 100 bougies
         query = session.query(
             MT5EURUSDM15.time,
             MT5EURUSDM15.open,
@@ -47,9 +45,6 @@ def render_prices_tab():
             session.close()
             return
 
-        # ====================================================================
-        # GRAPHIQUE CHANDELIER
-        # ====================================================================
         fig = go.Figure(data=[go.Candlestick(
             x=df['time'],
             open=df['open'],
@@ -69,9 +64,6 @@ def render_prices_tab():
 
         st.plotly_chart(fig, use_container_width=True)
 
-        # ====================================================================
-        # GRAPHIQUE SIGNAL CONFIDENCE
-        # ====================================================================
         fig2 = px.line(
             df,
             x='time',

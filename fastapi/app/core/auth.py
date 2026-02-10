@@ -21,10 +21,8 @@ from typing import Optional, Union
 from app.core.auth_database import get_auth_db
 from app.models.api_token import APIToken
 
-# Schéma de sécurité: Token dans le header "X-API-Key"
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
-# Schéma de sécurité: Token dans le header "X-API-Key"
 def get_master_token() -> str:
     """Récupère le Master Token depuis les variables d'environnement"""
     return os.getenv("FASTAPI_MASTER_TOKEN", "")
@@ -75,12 +73,10 @@ async def verify_api_token(
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
-    # Vérifier si c'est le Master Token
     master_token = get_master_token()
     if master_token and api_key == master_token:
         return MasterTokenInfo()
 
-    # Sinon, rechercher le token en base
     token = db.query(APIToken).filter(APIToken.token == api_key).first()
 
     if not token:
@@ -97,7 +93,6 @@ async def verify_api_token(
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
-    # Mettre à jour la date de dernière utilisation
     token.last_used_at = datetime.utcnow()
     db.commit()
 

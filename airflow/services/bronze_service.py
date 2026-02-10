@@ -32,11 +32,9 @@ def extract_mt5_data(start, end):
 
     print(f"[BRONZE/MT5] Extraction MT5: {start} -> {end}")
 
-    # Extraction
     df = pd.DataFrame.from_dict(import_data(start=start, end=end))
     print(f"[BRONZE/MT5] OK: {len(df)} lignes extraites")
 
-    # Sauvegarde en .parquet
     path = f"{base_path}/eurusd_mt5.parquet"
     df.to_parquet(path)
     print(f"[BRONZE/MT5] OK: Donnees sauvegardees: {path}")
@@ -63,12 +61,10 @@ def extract_yahoo_data(start=None, end=None):
 
     print("[BRONZE/YAHOO] Extraction Yahoo Finance via Client...")
 
-    # Utiliser le client Yahoo Finance (avec Vault)
     yahoo_client = YahooFinanceClient(use_vault=True)
     macro_context = yahoo_client.get_macro_context(start=start, end=end)
     print(f"[BRONZE/YAHOO] OK: {len(macro_context)} actifs extraits")
 
-    # Sauvegarde en .parquet
     paths = {}
     asset_mapping = {
         'eurusd': 'EUR/USD',
@@ -89,7 +85,6 @@ def extract_yahoo_data(start=None, end=None):
             num_rows = len(df)
             total_rows += num_rows
 
-            # Afficher les dates min/max pour debug
             date_min = df.index.min()
             date_max = df.index.max()
             print(f"[BRONZE/YAHOO] {name}: {num_rows} lignes (de {date_min.date()} à {date_max.date()})")
@@ -126,11 +121,9 @@ def extract_eurostat_data(start=None):
 
     print("[BRONZE/DOCUMENTS] Extraction documents economiques via Client...")
 
-    # Utiliser le client Eurostat (avec Vault)
     eurostat_client = EurostatClient(use_vault=True)
     documents = eurostat_client.extract_all_documents(start=start)
 
-    # Sauvegarder les DataFrames en parquet
     paths = {}
     for key, df in documents.items():
         if df is not None and not df.empty:
@@ -164,17 +157,14 @@ def extract_wikipedia_indices():
 
     print("[BRONZE/WIKIPEDIA] ==================== DÉBUT SCRAPING ====================")
 
-    # Scraper tous les indices
     indices_data = scrape_all_indices()
 
     if not indices_data:
         print("[BRONZE/WIKIPEDIA] ❌ Aucune donnée scrapée")
         return {}
 
-    # Sauvegarder en parquet
     file_paths = save_scraped_data_to_parquet(indices_data, base_path)
 
-    # Afficher statistiques
     stats = get_scraping_stats(indices_data)
     print(f"[BRONZE/WIKIPEDIA] ✅ Statistiques:")
     print(f"[BRONZE/WIKIPEDIA]   - Indices: {stats['total_indices']}")

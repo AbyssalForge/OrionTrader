@@ -7,9 +7,6 @@ from datetime import datetime
 from typing import Optional
 
 
-# ============================================================================
-# SCHEMAS POUR SIGNAUX DE TRADING
-# ============================================================================
 
 class HighConfidenceSignalResponse(BaseModel):
     """Response pour signaux haute confiance"""
@@ -22,7 +19,6 @@ class HighConfidenceSignalResponse(BaseModel):
     euro_strength_bias: Optional[int] = None
     signal_divergence_count: int
 
-    # Prix MT5 associé
     mt5_close: float
     mt5_open: float
 
