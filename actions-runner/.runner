@@ -1,0 +1,11 @@
+﻿{
+  "agentId": 24,
+  "agentName": "self-hosted-runner",
+  "poolId": 1,
+  "poolName": "Default",
+  "serverUrl": "https://pipelinesghubeus24.actions.githubusercontent.com/k6kYZj43KDqxO9rWy8ATn9FRgJKxoAUzKls0ajSnjLieri0Q01/",
+  "gitHubUrl": "https://github.com/AbyssalForge",
+  "workFolder": "_work",
+  "useV2Flow": true,
+  "serverUrlV2": "https://broker.actions.githubusercontent.com/"
+}
