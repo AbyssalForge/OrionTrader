@@ -25,7 +25,7 @@ on:
           - staging
           - production
   push:
-    branches: [ main, E3_vrais ]
+    branches: [ main, E3_OVH ]
 
 env:
   REGISTRY: ghcr.io
