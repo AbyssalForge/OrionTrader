@@ -26,9 +26,6 @@ on:
           - production
   push:
     branches: [ main, E3_vrais ]
-  pull_request:
-    branches: [ main, E3_vrais ]
-
 
 env:
   REGISTRY: ghcr.io
