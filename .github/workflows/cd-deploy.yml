@@ -243,6 +243,11 @@ jobs:
             fi
 
             cd "$DEPLOY_DIR"
+            echo "Répertoire courant : $(pwd)"
+            echo "Fichiers présents :"
+            ls -la "$DEPLOY_DIR/docker-compose"*.yml 2>/dev/null || echo "Aucun fichier docker-compose*.yml trouvé"
+
+            COMPOSE_FILE="$DEPLOY_DIR/docker-compose.prod.yml"
 
             # Installer Docker Compose v2 plugin si absent
             if ! sudo docker compose version &>/dev/null; then
@@ -255,16 +260,16 @@ jobs:
             fi
 
             echo "=== Arrêt des anciens conteneurs ==="
-            sudo docker compose -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
+            sudo docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
 
             echo "=== Rebuild et redémarrage des services ==="
-            sudo docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+            sudo docker compose -f "$COMPOSE_FILE" up -d --build --remove-orphans
 
             echo "=== Nettoyage images inutilisées ==="
             sudo docker image prune -f
 
             echo "=== Statut des conteneurs ==="
-            sudo docker compose -f docker-compose.prod.yml ps
+            sudo docker compose -f "$COMPOSE_FILE" ps
           ENDSSH
 
           # Nettoyage clé SSH
