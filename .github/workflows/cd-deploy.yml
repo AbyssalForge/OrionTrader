@@ -265,6 +265,10 @@ jobs:
             echo "=== Rebuild et redémarrage des services ==="
             sudo docker compose -f "$COMPOSE_FILE" up -d --build --remove-orphans
 
+            echo "=== Connexion wg-easy au réseau Docker ==="
+            NETWORK_NAME=$(sudo docker compose -f "$COMPOSE_FILE" ls --format json 2>/dev/null | grep -o '"oriontrader[^"]*"' | head -1 | tr -d '"' || echo "oriontrader_oriontrader_network")
+            sudo docker network connect oriontrader_oriontrader_network wg-easy 2>/dev/null || echo "wg-easy déjà connecté ou réseau introuvable"
+
             echo "=== Nettoyage images inutilisées ==="
             sudo docker image prune -f
 

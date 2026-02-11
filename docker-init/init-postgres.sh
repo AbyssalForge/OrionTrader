@@ -29,7 +29,7 @@ echo "==========================================================================
 max_attempts=60
 attempt=0
 
-until PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $TRADING_DB_NAME -c '\q' 2>/dev/null; do
+until PGPASSWORD=$POSTGRES_PASSWORD psql -h ${POSTGRES_HOST:-postgres} -U $POSTGRES_USER -d $TRADING_DB_NAME -c '\q' 2>/dev/null; do
   attempt=$((attempt + 1))
   if [ $attempt -ge $max_attempts ]; then
     echo "ERROR: PostgreSQL did not become ready in time"
@@ -48,7 +48,7 @@ echo ""
 
 echo "[1/4] Creation des utilisateurs..."
 
-PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $TRADING_DB_NAME <<-EOSQL
+PGPASSWORD=$POSTGRES_PASSWORD psql -h ${POSTGRES_HOST:-postgres} -U $POSTGRES_USER -d $TRADING_DB_NAME <<-EOSQL
     DO \$\$
     BEGIN
         -- Utilisateur Airflow
@@ -93,7 +93,7 @@ EOSQL
 echo ""
 echo "[2/4] Creation des bases de donnees..."
 
-PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $TRADING_DB_NAME <<-EOSQL
+PGPASSWORD=$POSTGRES_PASSWORD psql -h ${POSTGRES_HOST:-postgres} -U $POSTGRES_USER -d $TRADING_DB_NAME <<-EOSQL
     -- Base Airflow
     SELECT 'CREATE DATABASE ${AIRFLOW_DB_NAME} OWNER ${AIRFLOW_DB_USER}'
     WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${AIRFLOW_DB_NAME}')\gexec
@@ -114,7 +114,7 @@ EOSQL
 echo ""
 echo "[3/4] Configuration des permissions sur ${TRADING_DB_NAME}..."
 
-PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $TRADING_DB_NAME <<-EOSQL
+PGPASSWORD=$POSTGRES_PASSWORD psql -h ${POSTGRES_HOST:-postgres} -U $POSTGRES_USER -d $TRADING_DB_NAME <<-EOSQL
     -- Airflow: acces complet (ecriture des donnees depuis les DAGs)
     GRANT ALL ON SCHEMA public TO ${AIRFLOW_DB_USER};
     GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${AIRFLOW_DB_USER};
@@ -147,7 +147,7 @@ echo ""
 echo "[4/4] Configuration des permissions sur les bases des services..."
 
 # Airflow
-PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d ${AIRFLOW_DB_NAME} <<-EOSQL
+PGPASSWORD=$POSTGRES_PASSWORD psql -h ${POSTGRES_HOST:-postgres} -U $POSTGRES_USER -d ${AIRFLOW_DB_NAME} <<-EOSQL
     GRANT ALL ON SCHEMA public TO ${AIRFLOW_DB_USER};
     GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${AIRFLOW_DB_USER};
     GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${AIRFLOW_DB_USER};
@@ -157,7 +157,7 @@ EOSQL
 echo "  [OK] ${AIRFLOW_DB_NAME}: ${AIRFLOW_DB_USER} a tous les droits"
 
 # MLflow
-PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d ${MLFLOW_DB_NAME} <<-EOSQL
+PGPASSWORD=$POSTGRES_PASSWORD psql -h ${POSTGRES_HOST:-postgres} -U $POSTGRES_USER -d ${MLFLOW_DB_NAME} <<-EOSQL
     GRANT ALL ON SCHEMA public TO ${MLFLOW_DB_USER};
     GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${MLFLOW_DB_USER};
     GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${MLFLOW_DB_USER};
@@ -167,7 +167,7 @@ EOSQL
 echo "  [OK] ${MLFLOW_DB_NAME}: ${MLFLOW_DB_USER} a tous les droits"
 
 # FastAPI
-PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d ${FASTAPI_DB_NAME} <<-EOSQL
+PGPASSWORD=$POSTGRES_PASSWORD psql -h ${POSTGRES_HOST:-postgres} -U $POSTGRES_USER -d ${FASTAPI_DB_NAME} <<-EOSQL
     GRANT ALL ON SCHEMA public TO ${FASTAPI_DB_USER};
     GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${FASTAPI_DB_USER};
     GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${FASTAPI_DB_USER};

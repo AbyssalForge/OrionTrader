@@ -1,12 +1,18 @@
 version: "3.9"
 
-# docker-compose pour déploiement OVH VPS
-# Services: postgres, mlflow, fastapi, streamlit + nginx (SSL)
+# docker-compose OVH VPS
+# VPN (wg-easy)      : postgres, pgadmin, mlflow, marimo
+# Internet (nginx SSL): fastapi, streamlit
 
 services:
+
+  # ============================================================
+  # PostgreSQL (VPN uniquement — réseau wg-easy)
+  # ============================================================
   postgres:
     image: postgres:15
     container_name: orion_postgres
+    network_mode: "container:wg-easy"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -20,6 +26,9 @@ services:
       FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}
       STREAMLIT_DB_USER: ${STREAMLIT_DB_USER:-streamlit}
       STREAMLIT_DB_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
+      AIRFLOW_DB_NAME: ${AIRFLOW_DB_NAME:-airflow}
+      AIRFLOW_DB_USER: ${AIRFLOW_DB_USER:-airflow}
+      AIRFLOW_DB_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow}
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
       - ./docker-init/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
@@ -30,12 +39,11 @@ services:
       retries: 10
       start_period: 15s
     restart: always
-    networks:
-      - oriontrader_network
 
   postgres-init:
     image: postgres:15
     container_name: orion_postgres_init
+    network_mode: "container:wg-easy"
     depends_on:
       postgres:
         condition: service_healthy
@@ -43,6 +51,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: "127.0.0.1"
       MLFLOW_DB_NAME: ${MLFLOW_DB_NAME}
       MLFLOW_DB_USER: ${MLFLOW_DB_USER}
       MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD}
@@ -51,21 +60,29 @@ services:
       FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}
       STREAMLIT_DB_USER: ${STREAMLIT_DB_USER:-streamlit}
       STREAMLIT_DB_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
+      AIRFLOW_DB_NAME: ${AIRFLOW_DB_NAME:-airflow}
+      AIRFLOW_DB_USER: ${AIRFLOW_DB_USER:-airflow}
+      AIRFLOW_DB_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow}
     volumes:
       - ./docker-init/init-postgres.sh:/init-postgres.sh
     command: bash /init-postgres.sh
-    networks:
-      - oriontrader_network
     restart: "no"
     labels:
       - "com.docker.compose.oneoff=True"
 
+  # ============================================================
+  # MLflow (VPN uniquement)
+  # ============================================================
   mlflow:
     build:
       context: ./mlflow
       dockerfile: Dockerfile
     container_name: orion_mlflow
+    network_mode: "container:wg-easy"
     working_dir: /mlflow
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
     environment:
       MLFLOW_HOST: "*"
     volumes:
@@ -74,7 +91,7 @@ services:
       - mlflow
       - server
       - --backend-store-uri
-      - postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@postgres:5432/${MLFLOW_DB_NAME}
+      - postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@127.0.0.1:5432/${MLFLOW_DB_NAME}
       - --default-artifact-root
       - file:///mlflow/mlruns
       - --host
@@ -83,14 +100,55 @@ services:
       - "5001"
       - --allowed-hosts
       - "*"
-    # Pas de port exposé à l'extérieur — nginx gère le SSL
-    depends_on:
-      postgres-init:
-        condition: service_completed_successfully
-    networks:
-      - oriontrader_network
     restart: always
 
+  # ============================================================
+  # PgAdmin (VPN uniquement)
+  # ============================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: orion_pgadmin
+    network_mode: "container:wg-easy"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    restart: always
+
+  # ============================================================
+  # Marimo (VPN uniquement)
+  # ============================================================
+  marimo:
+    build:
+      context: ./marimo
+      dockerfile: Dockerfile
+    container_name: orion_marimo
+    network_mode: "container:wg-easy"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: "127.0.0.1"
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-trading_data}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MLFLOW_TRACKING_URI: http://127.0.0.1:5001
+    volumes:
+      - ./marimo/notebooks:/app/notebooks:rw
+      - mlflow-artifacts:/mlflow/mlruns:rw
+    restart: unless-stopped
+
+  # ============================================================
+  # FastAPI (Internet via nginx SSL — port 8001)
+  # ============================================================
   fastapi:
     build:
       context: ./fastapi
@@ -103,22 +161,24 @@ services:
         condition: service_started
     environment:
       ENVIRONMENT: production
-      FASTAPI_DB_HOST: postgres
+      FASTAPI_DB_HOST: wg-easy
       FASTAPI_DB_PORT: 5432
       FASTAPI_DB_NAME: ${FASTAPI_DB_NAME:-fastapi}
       FASTAPI_DB_USER: ${FASTAPI_DB_USER:-fastapi}
       FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}
       FASTAPI_MASTER_TOKEN: ${FASTAPI_MASTER_TOKEN}
-      MLFLOW_TRACKING_URI: http://mlflow:5001
+      MLFLOW_TRACKING_URI: http://wg-easy:5001
       PYTHONPATH: /opt/airflow
     volumes:
       - mlflow-artifacts:/mlflow/mlruns:rw
       - ./airflow:/opt/airflow:ro
-    # Pas de port exposé à l'extérieur — nginx gère le SSL
     networks:
       - oriontrader_network
     restart: always
 
+  # ============================================================
+  # Streamlit (Internet via nginx SSL — port 8501)
+  # ============================================================
   streamlit:
     build:
       context: ./streamlit
@@ -130,19 +190,21 @@ services:
       fastapi:
         condition: service_started
     environment:
-      POSTGRES_HOST: postgres
+      POSTGRES_HOST: wg-easy
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-trading_data}
       POSTGRES_USER: ${STREAMLIT_DB_USER:-streamlit}
       POSTGRES_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
       FASTAPI_URL: http://fastapi:8000
       FASTAPI_API_TOKEN: ${FASTAPI_MASTER_TOKEN}
-    # Pas de port exposé à l'extérieur — nginx gère le SSL
     networks:
       - oriontrader_network
     restart: always
     command: streamlit run app.py --server.address=0.0.0.0 --server.port=8502 --server.fileWatcherType=poll
 
+  # ============================================================
+  # Nginx (reverse proxy SSL)
+  # ============================================================
   nginx:
     build:
       context: ./nginx
@@ -167,3 +229,4 @@ networks:
 volumes:
   postgres-db-volume:
   mlflow-artifacts:
+  pgadmin-data:
