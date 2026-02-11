@@ -1,7 +1,7 @@
 version: "3.9"
 
 # docker-compose pour déploiement OVH VPS
-# Services: postgres, mlflow, fastapi, streamlit
+# Services: postgres, mlflow, fastapi, streamlit + nginx (SSL)
 
 services:
   postgres:
@@ -80,21 +80,16 @@ services:
       - --host
       - 0.0.0.0
       - --port
-      - "5000"
-    ports:
-      - "5000:5000"
+      - "5001"
+      - --allowed-hosts
+      - "*"
+    # Pas de port exposé à l'extérieur — nginx gère le SSL
     depends_on:
       postgres-init:
         condition: service_completed_successfully
     networks:
       - oriontrader_network
     restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   fastapi:
     build:
@@ -114,11 +109,10 @@ services:
       FASTAPI_DB_USER: ${FASTAPI_DB_USER:-fastapi}
       FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}
       FASTAPI_MASTER_TOKEN: ${FASTAPI_MASTER_TOKEN}
-      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_TRACKING_URI: http://mlflow:5001
     volumes:
       - mlflow-artifacts:/mlflow/mlruns:rw
-    ports:
-      - "8001:8000"
+    # Pas de port exposé à l'extérieur — nginx gère le SSL
     networks:
       - oriontrader_network
     restart: always
@@ -139,14 +133,30 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-trading_data}
       POSTGRES_USER: ${STREAMLIT_DB_USER:-streamlit}
       POSTGRES_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
-      FASTAPI_URL: http://fastapi:8001
+      FASTAPI_URL: http://fastapi:8000
       FASTAPI_API_TOKEN: ${FASTAPI_MASTER_TOKEN}
-    ports:
-      - "8501:8501"
+    # Pas de port exposé à l'extérieur — nginx gère le SSL
     networks:
       - oriontrader_network
     restart: always
-    command: streamlit run app.py --server.address=0.0.0.0 --server.port=8501 --server.fileWatcherType=poll
+    command: streamlit run app.py --server.address=0.0.0.0 --server.port=8502 --server.fileWatcherType=poll
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: orion_nginx
+    depends_on:
+      - mlflow
+      - fastapi
+      - streamlit
+    ports:
+      - "5000:5000"    # MLflow HTTPS
+      - "8001:8001"    # FastAPI HTTPS
+      - "8501:8501"    # Streamlit HTTPS
+    networks:
+      - oriontrader_network
+    restart: always
 
 networks:
   oriontrader_network:
