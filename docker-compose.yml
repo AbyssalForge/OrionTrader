@@ -133,7 +133,7 @@ services:
     environment:
       <<: *airflow-env
       PYTHONPATH: /opt/airflow:/opt/airflow/dags:/opt/airflow/utils:/opt/airflow/services:/opt/airflow/clients:/opt/airflow/config
-      VAULT_ADDR: http://vault:8200
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
       MT5_HOST: ${MT5_HOST:-host.docker.internal}
       MT5_PORT: ${MT5_PORT:-9090}
@@ -167,7 +167,7 @@ services:
       # Mode (development ou production)
       ENVIRONMENT: ${FASTAPI_ENVIRONMENT:-development}
       # Optional: MLFlow et Vault
-      VAULT_ADDR: http://vault:8200
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
       # FastAPI Auth Database
       FASTAPI_DB_HOST: ${POSTGRES_URL:-postgres}
@@ -276,7 +276,7 @@ services:
       vault:
         condition: service_started
     environment:
-      VAULT_ADDR: http://vault:8200
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
     volumes:
       - ./marimo/notebooks:/app/notebooks:rw  # Hot-reload notebooks
@@ -301,7 +301,7 @@ services:
       POSTGRES_USER: ${STREAMLIT_DB_USER:-streamlit}
       POSTGRES_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
       # Vault
-      VAULT_ADDR: http://vault:8200
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
       # FastAPI endpoint
       FASTAPI_URL: http://fastapi:8000

@@ -135,6 +135,8 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      VAULT_ADDR: ${VAULT_ADDR:-http://10.8.0.1:8200}
+      VAULT_TOKEN: ${VAULT_ROOT_TOKEN}
       POSTGRES_HOST: "127.0.0.1"
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-trading_data}
@@ -161,8 +163,10 @@ services:
         condition: service_started
     environment:
       ENVIRONMENT: production
-      FASTAPI_DB_HOST: wg-easy
-      FASTAPI_DB_PORT: 5432
+      VAULT_ADDR: ${VAULT_ADDR:-http://10.8.0.1:8200}
+      VAULT_TOKEN: ${VAULT_ROOT_TOKEN}
+      FASTAPI_DB_HOST: ${POSTGRES_URL:-wg-easy}
+      FASTAPI_DB_PORT: ${POSTGRES_PORT:-5432}
       FASTAPI_DB_NAME: ${FASTAPI_DB_NAME:-fastapi}
       FASTAPI_DB_USER: ${FASTAPI_DB_USER:-fastapi}
       FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}
@@ -190,8 +194,8 @@ services:
       fastapi:
         condition: service_started
     environment:
-      POSTGRES_HOST: wg-easy
-      POSTGRES_PORT: 5432
+      POSTGRES_HOST: ${POSTGRES_URL:-wg-easy}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_DB: ${POSTGRES_DB:-trading_data}
       POSTGRES_USER: ${STREAMLIT_DB_USER:-streamlit}
       POSTGRES_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
