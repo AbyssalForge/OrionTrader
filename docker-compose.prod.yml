@@ -110,8 +110,10 @@ services:
       FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}
       FASTAPI_MASTER_TOKEN: ${FASTAPI_MASTER_TOKEN}
       MLFLOW_TRACKING_URI: http://mlflow:5001
+      PYTHONPATH: /opt/airflow
     volumes:
       - mlflow-artifacts:/mlflow/mlruns:rw
+      - ./airflow:/opt/airflow:ro
     # Pas de port exposé à l'extérieur — nginx gère le SSL
     networks:
       - oriontrader_network
