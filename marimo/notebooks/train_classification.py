@@ -3205,8 +3205,9 @@ def _(mo):
 
 @app.cell
 def _(mo):
+    import os as _os
     # Configuration MLflow
-    mlflow_uri_input = mo.ui.text(value="http://mlflow:5000", label="MLflow URI")
+    mlflow_uri_input = mo.ui.text(value=_os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5001"), label="MLflow URI")
     experiment_name_input = mo.ui.text(value="OrionTrader_classification", label="Experiment Name")
 
     mo.hstack([mlflow_uri_input, experiment_name_input])

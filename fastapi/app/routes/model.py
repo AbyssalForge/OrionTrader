@@ -7,6 +7,7 @@ from typing import Optional
 import mlflow
 import numpy as np
 import time
+import os
 from datetime import datetime
 
 from app.schemas.model import (
@@ -30,7 +31,7 @@ from app.models.api_token import APIToken
 
 router = APIRouter()
 
-MLFLOW_TRACKING_URI = "http://mlflow:5000"
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5001")
 MODEL_NAME = "classification_model"
 
 _model_cache = {
