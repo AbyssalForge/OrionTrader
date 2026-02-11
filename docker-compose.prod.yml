@@ -214,8 +214,9 @@ services:
       - fastapi
       - streamlit
     ports:
-      - "8001:8001"    # FastAPI HTTPS
-      - "8501:8501"    # Streamlit HTTPS
+      - "10.8.0.1:5000:5000"  # MLflow HTTPS (VPN uniquement)
+      - "8001:8001"            # FastAPI HTTPS
+      - "8501:8501"            # Streamlit HTTPS
     networks:
       - oriontrader_network
     restart: always
