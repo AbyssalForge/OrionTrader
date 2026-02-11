@@ -203,6 +203,21 @@ services:
     command: streamlit run app.py --server.address=0.0.0.0 --server.port=8502 --server.fileWatcherType=poll
 
   # ============================================================
+  # Nginx VPN (reverse proxy SSL — VPN uniquement, port 5000)
+  # Partage le namespace réseau de wg-easy → accessible via 10.8.0.1:5000
+  # ============================================================
+  nginx-vpn:
+    build:
+      context: ./nginx-vpn
+      dockerfile: Dockerfile
+    container_name: orion_nginx_vpn
+    network_mode: "container:wg-easy"
+    depends_on:
+      mlflow:
+        condition: service_started
+    restart: always
+
+  # ============================================================
   # Nginx (reverse proxy SSL)
   # ============================================================
   nginx:
@@ -214,9 +229,8 @@ services:
       - fastapi
       - streamlit
     ports:
-      - "10.8.0.1:5000:5000"  # MLflow HTTPS (VPN uniquement)
-      - "8001:8001"            # FastAPI HTTPS
-      - "8501:8501"            # Streamlit HTTPS
+      - "8001:8001"    # FastAPI HTTPS
+      - "8501:8501"    # Streamlit HTTPS
     networks:
       - oriontrader_network
     restart: always
