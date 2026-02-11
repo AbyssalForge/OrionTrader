@@ -245,14 +245,13 @@ jobs:
             cd "$DEPLOY_DIR"
 
             echo "=== Rebuild et redémarrage des services ==="
-            sudo docker compose -f docker-compose.prod.yml pull --ignore-pull-failures 2>/dev/null || true
-            sudo docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+            sudo docker-compose -f docker-compose.prod.yml up -d --build --remove-orphans
 
             echo "=== Nettoyage images inutilisées ==="
             sudo docker image prune -f
 
             echo "=== Statut des conteneurs ==="
-            sudo docker compose -f docker-compose.prod.yml ps
+            sudo docker-compose -f docker-compose.prod.yml ps
           ENDSSH
 
           # Nettoyage clé SSH
