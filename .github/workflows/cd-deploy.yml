@@ -244,14 +244,21 @@ jobs:
 
             cd "$DEPLOY_DIR"
 
+            # Installer Docker Compose v2 plugin si absent
+            if ! docker compose version &>/dev/null; then
+              echo "Installation Docker Compose v2..."
+              sudo apt-get update -qq
+              sudo apt-get install -y docker-compose-plugin
+            fi
+
             echo "=== Rebuild et redémarrage des services ==="
-            sudo docker-compose -f docker-compose.prod.yml up -d --build --remove-orphans
+            sudo docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
 
             echo "=== Nettoyage images inutilisées ==="
             sudo docker image prune -f
 
             echo "=== Statut des conteneurs ==="
-            sudo docker-compose -f docker-compose.prod.yml ps
+            sudo docker compose -f docker-compose.prod.yml ps
           ENDSSH
 
           # Nettoyage clé SSH
