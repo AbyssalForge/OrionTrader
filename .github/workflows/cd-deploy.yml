@@ -245,10 +245,13 @@ jobs:
             cd "$DEPLOY_DIR"
 
             # Installer Docker Compose v2 plugin si absent
-            if ! docker compose version &>/dev/null; then
+            if ! sudo docker compose version &>/dev/null; then
               echo "Installation Docker Compose v2..."
-              sudo apt-get update -qq
-              sudo apt-get install -y docker-compose-plugin
+              sudo mkdir -p /usr/local/lib/docker/cli-plugins
+              sudo curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 \
+                -o /usr/local/lib/docker/cli-plugins/docker-compose
+              sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+              echo "Docker Compose v2 installé : $(sudo docker compose version)"
             fi
 
             echo "=== Rebuild et redémarrage des services ==="
