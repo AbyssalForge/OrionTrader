@@ -254,6 +254,9 @@ jobs:
               echo "Docker Compose v2 installé : $(sudo docker compose version)"
             fi
 
+            echo "=== Arrêt des anciens conteneurs ==="
+            sudo docker compose -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
+
             echo "=== Rebuild et redémarrage des services ==="
             sudo docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
 
