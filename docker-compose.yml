@@ -170,8 +170,8 @@ services:
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
       # FastAPI Auth Database
-      FASTAPI_DB_HOST: postgres
-      FASTAPI_DB_PORT: 5432
+      FASTAPI_DB_HOST: ${POSTGRES_URL:-postgres}
+      FASTAPI_DB_PORT: ${POSTGRES_PORT:-5432}
       FASTAPI_DB_NAME: ${FASTAPI_DB_NAME:-fastapi}
       FASTAPI_DB_USER: ${FASTAPI_DB_USER:-fastapi}
       FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}
@@ -295,8 +295,8 @@ services:
         condition: service_healthy
     environment:
       # Database connection (read-only user)
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
+      POSTGRES_HOST: ${POSTGRES_URL:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_DB: ${POSTGRES_DB:-trading_data}
       POSTGRES_USER: ${STREAMLIT_DB_USER:-streamlit}
       POSTGRES_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
