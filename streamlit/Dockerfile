@@ -13,8 +13,8 @@ COPY requirements.txt .
 # Installer les dépendances Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Le code sera monté via volume pour hot-reload
-# Pas besoin de COPY . . car on utilise un volume
+# Copier le code de l'application
+COPY . .
 
 # Exposer le port Streamlit
 EXPOSE 8501
