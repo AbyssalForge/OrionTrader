@@ -201,20 +201,21 @@ def _(hvac, os, pd, psycopg):
         secret = client.secrets.kv.v2.read_secret_version(path='Database', mount_point=VAULT_MOUNT)
         db_credentials = secret['data']['data']
 
-        DB_HOST = db_credentials.get('POSTGRES_HOST', 'postgres')
-        DB_PORT = db_credentials.get('POSTGRES_PORT', '5432')
-        DB_NAME = db_credentials.get('POSTGRES_DB', 'postgres')
-        DB_USER = db_credentials.get('POSTGRES_USER', 'postgres')
-        DB_PASSWORD = db_credentials.get('POSTGRES_PASSWORD', 'postgres')
+        DB_HOST = db_credentials.get('POSTGRES_HOST', os.getenv('POSTGRES_HOST', '127.0.0.1'))
+        DB_PORT = db_credentials.get('POSTGRES_PORT', os.getenv('POSTGRES_PORT', '5432'))
+        DB_NAME = db_credentials.get('POSTGRES_DB', os.getenv('POSTGRES_DB', 'trading_data'))
+        DB_USER = db_credentials.get('POSTGRES_USER', os.getenv('POSTGRES_USER', 'postgres'))
+        DB_PASSWORD = db_credentials.get('POSTGRES_PASSWORD', os.getenv('POSTGRES_PASSWORD', ''))
 
         print("✅ Credentials récupérés depuis Vault")
     except Exception as e:
         print(f"⚠️ Erreur Vault: {e}")
-        DB_HOST = 'postgres'
-        DB_PORT = '5432'
-        DB_NAME = 'postgres'
-        DB_USER = 'postgres'
-        DB_PASSWORD = 'postgres'
+        DB_HOST = os.getenv('POSTGRES_HOST', '127.0.0.1')
+        DB_PORT = os.getenv('POSTGRES_PORT', '5432')
+        DB_NAME = os.getenv('POSTGRES_DB', 'trading_data')
+        DB_USER = os.getenv('POSTGRES_USER', 'postgres')
+        DB_PASSWORD = os.getenv('POSTGRES_PASSWORD', '')
+        print(f"📋 Fallback sur variables d'environnement")
 
     print(f"📊 Connexion: {DB_HOST}:{DB_PORT}/{DB_NAME}")
 
