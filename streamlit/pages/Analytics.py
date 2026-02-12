@@ -7,11 +7,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-import sys
 
-sys.path.insert(0, '/opt/airflow')
-
-from utils.database import get_db_session
+from utils.database import get_db_connection
 
 st.set_page_config(
     page_title="Analytics - OrionTrader",
@@ -40,209 +37,178 @@ with st.sidebar:
     )
 
 
+end_time = datetime.now()
+start_time = end_time - timedelta(days=period_days)
+
+regime_list = ", ".join(f"'{r}'" for r in regime_filter) if regime_filter else "''"
+vol_list = ", ".join(f"'{v}'" for v in vol_filter) if vol_filter else "''"
+
+# ─────────────────────────────────────────────
 st.subheader("📈 Évolution des métriques")
 
 try:
-    session = get_db_session()
-    from models import MarketSnapshotM15
-
-    end_time = datetime.now()
-    start_time = end_time - timedelta(days=period_days)
-
-    query = session.query(
-        MarketSnapshotM15.time,
-        MarketSnapshotM15.signal_confidence_score,
-        MarketSnapshotM15.signal_divergence_count,
-        MarketSnapshotM15.trend_strength_composite,
-        MarketSnapshotM15.regime_composite,
-        MarketSnapshotM15.volatility_regime
-    ).filter(
-        MarketSnapshotM15.time >= start_time,
-        MarketSnapshotM15.regime_composite.in_(regime_filter),
-        MarketSnapshotM15.volatility_regime.in_(vol_filter)
-    ).order_by(MarketSnapshotM15.time.asc())
-
-    df = pd.read_sql(query.statement, session.bind)
-
-    if len(df) > 0:
-        fig1 = px.line(
-            df,
-            x='time',
-            y='signal_confidence_score',
-            title='Signal Confidence Score (évolution)',
-            labels={'signal_confidence_score': 'Confidence', 'time': 'Temps'}
-        )
-        fig1.add_hline(y=0.7, line_dash="dash", line_color="green")
-        fig1.add_hline(y=0.3, line_dash="dash", line_color="red")
-        st.plotly_chart(fig1, use_container_width=True)
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            fig2 = px.line(
-                df,
-                x='time',
-                y='trend_strength_composite',
-                title='Trend Strength Composite',
-                labels={'trend_strength_composite': 'Trend Strength', 'time': 'Temps'}
-            )
-            fig2.add_hline(y=0, line_dash="dash", line_color="gray")
-            st.plotly_chart(fig2, use_container_width=True)
-
-        with col2:
-            fig3 = px.bar(
-                df,
-                x='time',
-                y='signal_divergence_count',
-                title='Signal Divergence Count',
-                labels={'signal_divergence_count': 'Divergences', 'time': 'Temps'}
-            )
-            st.plotly_chart(fig3, use_container_width=True)
-
+    conn = get_db_connection()
+    if conn is None:
+        st.error("Impossible de se connecter à la base de données")
     else:
-        st.warning("Aucune donnée pour les filtres sélectionnés")
+        df = pd.read_sql(f"""
+            SELECT time, signal_confidence_score, signal_divergence_count,
+                   trend_strength_composite, regime_composite, volatility_regime
+            FROM market_snapshot_m15
+            WHERE time >= '{start_time}'
+              AND regime_composite IN ({regime_list})
+              AND volatility_regime IN ({vol_list})
+            ORDER BY time ASC
+        """, conn)
 
-    session.close()
+        if len(df) > 0:
+            fig1 = px.line(
+                df, x='time', y='signal_confidence_score',
+                title='Signal Confidence Score (évolution)',
+                labels={'signal_confidence_score': 'Confidence', 'time': 'Temps'}
+            )
+            fig1.add_hline(y=0.7, line_dash="dash", line_color="green")
+            fig1.add_hline(y=0.3, line_dash="dash", line_color="red")
+            st.plotly_chart(fig1, use_container_width=True)
+
+            col1, col2 = st.columns(2)
+            with col1:
+                fig2 = px.line(
+                    df, x='time', y='trend_strength_composite',
+                    title='Trend Strength Composite',
+                    labels={'trend_strength_composite': 'Trend Strength', 'time': 'Temps'}
+                )
+                fig2.add_hline(y=0, line_dash="dash", line_color="gray")
+                st.plotly_chart(fig2, use_container_width=True)
+
+            with col2:
+                fig3 = px.bar(
+                    df, x='time', y='signal_divergence_count',
+                    title='Signal Divergence Count',
+                    labels={'signal_divergence_count': 'Divergences', 'time': 'Temps'}
+                )
+                st.plotly_chart(fig3, use_container_width=True)
+        else:
+            st.warning("Aucune donnée pour les filtres sélectionnés")
+
+        conn.close()
 
 except Exception as e:
     st.error(f"Erreur: {e}")
 
 
+# ─────────────────────────────────────────────
 st.divider()
 st.subheader("🔗 Analyse de Corrélation")
 
 try:
-    session = get_db_session()
-    from models import MarketSnapshotM15, MT5EURUSDM15, YahooFinanceDaily
+    conn = get_db_connection()
+    if conn is not None:
+        df_corr = pd.read_sql(f"""
+            SELECT
+                s.signal_confidence_score,
+                s.trend_strength_composite,
+                s.signal_divergence_count,
+                m.volatility_1h,
+                m.volatility_4h,
+                y.vix_close,
+                y.dxy_close
+            FROM market_snapshot_m15 s
+            JOIN mt5_eurusd_m15 m ON s.mt5_time = m.time
+            JOIN yahoo_finance_daily y ON s.yahoo_time = y.time
+            WHERE s.time >= '{start_time}'
+            LIMIT 1000
+        """, conn)
 
-    query = session.query(
-        MarketSnapshotM15.signal_confidence_score,
-        MarketSnapshotM15.trend_strength_composite,
-        MarketSnapshotM15.signal_divergence_count,
-        MT5EURUSDM15.volatility_1h,
-        MT5EURUSDM15.volatility_4h,
-        YahooFinanceDaily.vix_close,
-        YahooFinanceDaily.dxy_close
-    ).join(
-        MT5EURUSDM15,
-        MarketSnapshotM15.mt5_time == MT5EURUSDM15.time
-    ).join(
-        YahooFinanceDaily,
-        MarketSnapshotM15.yahoo_time == YahooFinanceDaily.time
-    ).filter(
-        MarketSnapshotM15.time >= start_time
-    ).limit(1000)
+        if len(df_corr) > 5:
+            corr_matrix = df_corr.corr()
 
-    df_corr = pd.read_sql(query.statement, session.bind)
+            fig = px.imshow(
+                corr_matrix,
+                text_auto='.2f',
+                aspect='auto',
+                color_continuous_scale='RdBu_r',
+                title='Matrice de Corrélation',
+                labels=dict(color="Corrélation")
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
-    if len(df_corr) > 5:
-        corr_matrix = df_corr.corr()
+            st.markdown("### 🔝 Corrélations les plus fortes")
+            corr_pairs = []
+            for i in range(len(corr_matrix.columns)):
+                for j in range(i + 1, len(corr_matrix.columns)):
+                    corr_pairs.append({
+                        'Variable 1': corr_matrix.columns[i],
+                        'Variable 2': corr_matrix.columns[j],
+                        'Corrélation': corr_matrix.iloc[i, j]
+                    })
 
-        fig = px.imshow(
-            corr_matrix,
-            text_auto='.2f',
-            aspect='auto',
-            color_continuous_scale='RdBu_r',
-            title='Matrice de Corrélation',
-            labels=dict(color="Corrélation")
-        )
+            df_pairs = pd.DataFrame(corr_pairs).sort_values('Corrélation', key=abs, ascending=False)
+            st.dataframe(df_pairs.head(10), use_container_width=True, hide_index=True)
 
-        st.plotly_chart(fig, use_container_width=True)
-
-        st.markdown("### 🔝 Corrélations les plus fortes")
-
-        corr_pairs = []
-        for i in range(len(corr_matrix.columns)):
-            for j in range(i+1, len(corr_matrix.columns)):
-                corr_pairs.append({
-                    'Variable 1': corr_matrix.columns[i],
-                    'Variable 2': corr_matrix.columns[j],
-                    'Corrélation': corr_matrix.iloc[i, j]
-                })
-
-        df_pairs = pd.DataFrame(corr_pairs)
-        df_pairs = df_pairs.sort_values('Corrélation', key=abs, ascending=False)
-
-        st.dataframe(
-            df_pairs.head(10),
-            use_container_width=True,
-            hide_index=True
-        )
-
-    session.close()
+        conn.close()
 
 except Exception as e:
     st.error(f"Erreur lors de l'analyse de corrélation: {e}")
 
 
+# ─────────────────────────────────────────────
 st.divider()
 st.subheader("📊 Statistiques Descriptives")
 
 try:
-    session = get_db_session()
-    from models import MarketSnapshotM15
+    conn = get_db_connection()
+    if conn is not None:
+        df_stats = pd.read_sql(f"""
+            SELECT signal_confidence_score, signal_divergence_count, trend_strength_composite
+            FROM market_snapshot_m15
+            WHERE time >= '{start_time}'
+              AND regime_composite IN ({regime_list})
+              AND volatility_regime IN ({vol_list})
+        """, conn)
 
-    query = session.query(
-        MarketSnapshotM15.signal_confidence_score,
-        MarketSnapshotM15.signal_divergence_count,
-        MarketSnapshotM15.trend_strength_composite
-    ).filter(
-        MarketSnapshotM15.time >= start_time,
-        MarketSnapshotM15.regime_composite.in_(regime_filter),
-        MarketSnapshotM15.volatility_regime.in_(vol_filter)
-    )
+        if len(df_stats) > 0:
+            col1, col2, col3 = st.columns(3)
 
-    df_stats = pd.read_sql(query.statement, session.bind)
+            with col1:
+                st.metric(
+                    "Moyenne Confidence",
+                    f"{df_stats['signal_confidence_score'].mean():.3f}",
+                    f"σ = {df_stats['signal_confidence_score'].std():.3f}"
+                )
+            with col2:
+                st.metric(
+                    "Moyenne Divergences",
+                    f"{df_stats['signal_divergence_count'].mean():.2f}",
+                    f"Max = {df_stats['signal_divergence_count'].max():.0f}"
+                )
+            with col3:
+                st.metric(
+                    "Moyenne Trend Strength",
+                    f"{df_stats['trend_strength_composite'].mean():.4f}",
+                    f"σ = {df_stats['trend_strength_composite'].std():.4f}"
+                )
 
-    if len(df_stats) > 0:
-        col1, col2, col3 = st.columns(3)
+            st.markdown("### 📊 Distributions")
+            col1, col2 = st.columns(2)
 
-        with col1:
-            st.metric(
-                "Moyenne Confidence",
-                f"{df_stats['signal_confidence_score'].mean():.3f}",
-                f"σ = {df_stats['signal_confidence_score'].std():.3f}"
-            )
+            with col1:
+                fig = px.histogram(
+                    df_stats, x='signal_confidence_score', nbins=30,
+                    title='Distribution Signal Confidence',
+                    labels={'signal_confidence_score': 'Confidence Score'}
+                )
+                st.plotly_chart(fig, use_container_width=True)
 
-        with col2:
-            st.metric(
-                "Moyenne Divergences",
-                f"{df_stats['signal_divergence_count'].mean():.2f}",
-                f"Max = {df_stats['signal_divergence_count'].max():.0f}"
-            )
+            with col2:
+                fig = px.histogram(
+                    df_stats, x='trend_strength_composite', nbins=30,
+                    title='Distribution Trend Strength',
+                    labels={'trend_strength_composite': 'Trend Strength'}
+                )
+                st.plotly_chart(fig, use_container_width=True)
 
-        with col3:
-            st.metric(
-                "Moyenne Trend Strength",
-                f"{df_stats['trend_strength_composite'].mean():.4f}",
-                f"σ = {df_stats['trend_strength_composite'].std():.4f}"
-            )
-
-        st.markdown("### 📊 Distributions")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            fig = px.histogram(
-                df_stats,
-                x='signal_confidence_score',
-                nbins=30,
-                title='Distribution Signal Confidence',
-                labels={'signal_confidence_score': 'Confidence Score'}
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-        with col2:
-            fig = px.histogram(
-                df_stats,
-                x='trend_strength_composite',
-                nbins=30,
-                title='Distribution Trend Strength',
-                labels={'trend_strength_composite': 'Trend Strength'}
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    session.close()
+        conn.close()
 
 except Exception as e:
     st.error(f"Erreur: {e}")

@@ -4,6 +4,7 @@ Uses Vault for secure credential management
 """
 
 import os
+from urllib.parse import quote_plus
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
@@ -64,7 +65,7 @@ DB_NAME = credentials["POSTGRES_DB"]
 DB_USER = credentials["POSTGRES_USER"]
 DB_PASSWORD = credentials["POSTGRES_PASSWORD"]
 
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f"postgresql://{quote_plus(DB_USER)}:{quote_plus(DB_PASSWORD)}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 print(f"[INFO] Database URL: postgresql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
