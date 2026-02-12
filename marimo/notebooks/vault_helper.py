@@ -1,5 +1,5 @@
 """
-Helper simplifié pour accéder à HashiCorp Vault dans Airflow
+Helper simplifié pour accéder à HashiCorp Vault dans les notebooks Marimo
 """
 
 import hvac
@@ -8,7 +8,7 @@ from functools import lru_cache
 
 
 class VaultHelper:
-    """Helper pour simplifier l'accès à Vault dans vos DAGs"""
+    """Helper pour simplifier l'accès à Vault dans les notebooks"""
 
     def __init__(self):
         """Initialise la connexion à Vault"""
@@ -16,8 +16,7 @@ class VaultHelper:
         self.vault_token = os.getenv('VAULT_TOKEN')
         self.mount_point = os.getenv('VAULT_MOUNT', 'secret')
 
-        print(self.vault_addr)
-        print(self.vault_token)
+        print(f"[INFO] Vault Address: {self.vault_addr}")
 
         self.client = hvac.Client(
             url=self.vault_addr,
@@ -32,7 +31,7 @@ class VaultHelper:
         Récupère un secret depuis Vault
 
         Args:
-            path: Chemin du secret (ex: 'api/binance')
+            path: Chemin du secret (ex: 'Database', 'api/binance')
             key: Clé spécifique (optionnel, retourne tout si None)
 
         Returns:
@@ -40,14 +39,8 @@ class VaultHelper:
 
         Example:
             vault = get_vault()
-
-            # Récupérer toutes les clés
-            creds = vault.get_secret('api/binance')
-            # {'api_key': '...', 'api_secret': '...'}
-
-            # Récupérer une clé spécifique
+            creds = vault.get_secret('Database')
             api_key = vault.get_secret('api/binance', 'api_key')
-            # 'votre-clé'
         """
         try:
             response = self.client.secrets.kv.v2.read_secret_version(
@@ -67,16 +60,8 @@ class VaultHelper:
         Crée ou met à jour un secret dans Vault
 
         Args:
-            path: Chemin du secret (ex: 'airflow/results')
+            path: Chemin du secret
             **kwargs: Paires clé-valeur à stocker
-
-        Example:
-            vault = get_vault()
-            vault.set_secret('airflow/last-run',
-                timestamp='2024-01-01',
-                status='success',
-                profit=1234.56
-            )
         """
         try:
             self.client.secrets.kv.v2.create_or_update_secret(
@@ -92,15 +77,10 @@ class VaultHelper:
         Liste les secrets à un chemin donné
 
         Args:
-            path: Chemin à lister (ex: 'api')
+            path: Chemin à lister
 
         Returns:
             Liste des noms de secrets
-
-        Example:
-            vault = get_vault()
-            secrets = vault.list_secrets('api')
-            # ['binance', 'mt5', 'discord']
         """
         try:
             response = self.client.secrets.kv.v2.list_secrets(
@@ -116,12 +96,10 @@ def get_vault() -> VaultHelper:
     """
     Retourne une instance singleton de VaultHelper
 
-    Example dans un DAG:
-        from utils.vault_helper import get_vault
+    Example dans un notebook:
+        from vault_helper import get_vault
 
-        def ma_fonction():
-            vault = get_vault()
-            api_key = vault.get_secret('api/binance', 'api_key')
-            print(f"API Key: {api_key[:5]}...")
+        vault = get_vault()
+        creds = vault.get_secret('Database')
     """
     return VaultHelper()

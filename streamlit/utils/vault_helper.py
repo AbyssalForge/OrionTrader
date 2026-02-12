@@ -14,6 +14,7 @@ class VaultHelper:
         """Initialise la connexion à Vault"""
         self.vault_addr = os.getenv('VAULT_ADDR')
         self.vault_token = os.getenv('VAULT_TOKEN')
+        self.mount_point = os.getenv('VAULT_MOUNT', 'secret')
 
         print(f"[INFO] Vault Address: {self.vault_addr}")
         print(f"[INFO] Vault Token: {self.vault_token[:10]}...")
@@ -49,7 +50,9 @@ class VaultHelper:
             # 'postgres'
         """
         try:
-            response = self.client.secrets.kv.v2.read_secret_version(path=path)
+            response = self.client.secrets.kv.v2.read_secret_version(
+                path=path, mount_point=self.mount_point
+            )
             data = response['data']['data']
 
             if key:
@@ -77,7 +80,8 @@ class VaultHelper:
         try:
             self.client.secrets.kv.v2.create_or_update_secret(
                 path=path,
-                secret=kwargs
+                secret=kwargs,
+                mount_point=self.mount_point
             )
         except Exception as e:
             raise Exception(f"Failed to write secret at {path}: {str(e)}")
@@ -98,7 +102,9 @@ class VaultHelper:
             # ['Database', 'api', 'streamlit']
         """
         try:
-            response = self.client.secrets.kv.v2.list_secrets(path=path)
+            response = self.client.secrets.kv.v2.list_secrets(
+                path=path, mount_point=self.mount_point
+            )
             return response['data']['keys']
         except Exception as e:
             raise Exception(f"Failed to list secrets at {path}: {str(e)}")
