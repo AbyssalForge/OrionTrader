@@ -102,13 +102,9 @@ def get_db_context():
 
 
 def get_db_connection():
-    """Retourne une connexion SQLAlchemy (pour pd.read_sql). Recrée l'engine si nécessaire."""
-    try:
-        engine = _get_engine()
-        return engine.connect()
-    except Exception as e:
-        print(f"[ERROR] Could not create database connection: {e}")
-        return None
+    """Retourne une connexion SQLAlchemy (pour pd.read_sql). Lève une exception si échec."""
+    engine = _get_engine()
+    return engine.connect()
 
 
 def test_database_connection() -> bool:

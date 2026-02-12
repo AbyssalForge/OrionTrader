@@ -28,11 +28,8 @@ st.set_page_config(
 
 def load_wikipedia_data():
     """Charger les données Wikipedia depuis PostgreSQL"""
-    conn = get_db_connection()
-    if conn is None:
-        return None, "Impossible de se connecter à la base de données"
-
     try:
+        conn = get_db_connection()
         query = """
         SELECT
             ticker,
@@ -53,7 +50,6 @@ def load_wikipedia_data():
         return df, None
 
     except Exception as e:
-        conn.close()
         return None, str(e)
 
 def create_sample_data():
