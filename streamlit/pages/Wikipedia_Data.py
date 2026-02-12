@@ -26,14 +26,13 @@ st.set_page_config(
 )
 
 
-@st.cache_data(ttl=300)  # Cache 5 minutes
 def load_wikipedia_data():
     """Charger les données Wikipedia depuis PostgreSQL"""
-    try:
-        conn = get_db_connection()
-        if conn is None:
-            return None
+    conn = get_db_connection()
+    if conn is None:
+        return None, "Impossible de se connecter à la base de données"
 
+    try:
         query = """
         SELECT
             ticker,
@@ -49,14 +48,13 @@ def load_wikipedia_data():
         FROM wikipedia_indices
         ORDER BY ticker
         """
-
         df = pd.read_sql(query, conn)
         conn.close()
-        return df
+        return df, None
 
     except Exception as e:
-        st.error(f"Erreur lors du chargement des données: {str(e)}")
-        return None
+        conn.close()
+        return None, str(e)
 
 def create_sample_data():
     """Créer des données d'exemple si la DB n'est pas disponible"""
@@ -85,10 +83,14 @@ st.divider()
 
 
 with st.spinner("📥 Chargement des données..."):
-    df = load_wikipedia_data()
+    df, error = load_wikipedia_data()
 
-    if df is None or df.empty:
-        st.warning("⚠️ Impossible de se connecter à la base de données. Affichage de données d'exemple.")
+    if error:
+        st.error(f"❌ Erreur DB : {error}")
+        st.warning("Affichage de données d'exemple.")
+        df = create_sample_data()
+    elif df is None or df.empty:
+        st.warning("⚠️ Table wikipedia_indices vide ou introuvable. Affichage de données d'exemple.")
         df = create_sample_data()
 
 st.success(f"✅ **{len(df)}** entreprises chargées")

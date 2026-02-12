@@ -57,53 +57,44 @@ def get_database_credentials() -> Dict[str, str]:
 
 
 
-credentials = get_database_credentials()
-
-DB_HOST = credentials["POSTGRES_HOST"]
-DB_PORT = int(credentials["POSTGRES_PORT"])
-DB_NAME = credentials["POSTGRES_DB"]
-DB_USER = credentials["POSTGRES_USER"]
-DB_PASSWORD = credentials["POSTGRES_PASSWORD"]
-
-DATABASE_URL = f"postgresql://{quote_plus(DB_USER)}:{quote_plus(DB_PASSWORD)}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
-print(f"[INFO] Database URL: postgresql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+_engine = None
 
 
+def _get_engine():
+    """Crée l'engine SQLAlchemy à la demande (lazy) pour éviter les échecs au démarrage."""
+    global _engine
+    if _engine is None:
+        credentials = get_database_credentials()
+        db_host = credentials["POSTGRES_HOST"]
+        db_port = int(credentials["POSTGRES_PORT"])
+        db_name = credentials["POSTGRES_DB"]
+        db_user = credentials["POSTGRES_USER"]
+        db_password = credentials["POSTGRES_PASSWORD"]
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_size=5,
-    max_overflow=10,
-    pool_timeout=30,
-    pool_recycle=3600,
-    echo=False,
-)
+        database_url = (
+            f"postgresql://{quote_plus(db_user)}:{quote_plus(db_password)}"
+            f"@{db_host}:{db_port}/{db_name}"
+        )
+        print(f"[INFO] Connecting to: postgresql://{db_user}@{db_host}:{db_port}/{db_name}")
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
+        _engine = create_engine(
+            database_url,
+            pool_size=5,
+            max_overflow=10,
+            pool_timeout=30,
+            pool_recycle=3600,
+            echo=False,
+        )
+    return _engine
 
 
 def get_db_session() -> Session:
-    """
-    Retourne une nouvelle session DB
-
-    Returns:
-        Session SQLAlchemy
-    """
-    return SessionLocal()
+    return sessionmaker(autocommit=False, autoflush=False, bind=_get_engine())()
 
 
 @contextmanager
 def get_db_context():
-    """
-    Context manager pour utilisation avec 'with'
-
-    Usage:
-        with get_db_context() as db:
-            results = db.query(Model).all()
-    """
-    db = SessionLocal()
+    db = sessionmaker(autocommit=False, autoflush=False, bind=_get_engine())()
     try:
         yield db
     finally:
@@ -111,13 +102,9 @@ def get_db_context():
 
 
 def get_db_connection():
-    """
-    Retourne une connexion raw SQLAlchemy (pour pd.read_sql)
-
-    Returns:
-        Connection SQLAlchemy
-    """
+    """Retourne une connexion SQLAlchemy (pour pd.read_sql). Recrée l'engine si nécessaire."""
     try:
+        engine = _get_engine()
         return engine.connect()
     except Exception as e:
         print(f"[ERROR] Could not create database connection: {e}")
@@ -125,14 +112,8 @@ def get_db_connection():
 
 
 def test_database_connection() -> bool:
-    """
-    Teste la connexion à la base de données
-
-    Returns:
-        True si connexion OK, False sinon
-    """
     try:
-        with engine.connect() as conn:
+        with _get_engine().connect() as conn:
             conn.execute(text("SELECT 1"))
         return True
     except Exception as e:
