@@ -190,6 +190,8 @@ def _(hvac, os, pd, psycopg):
     # Configuration Vault
     VAULT_ADDR = os.getenv('VAULT_ADDR', 'http://vault:8200')
     VAULT_TOKEN = os.getenv('VAULT_TOKEN', '')
+    VAULT_MOUNT = os.getenv('VAULT_MOUNT', 'secrets')
+    VAULT_PATH_PREFIX = os.getenv('VAULT_PATH_PREFIX', '')
 
     print(f"🔐 Connexion à Vault: {VAULT_ADDR}")
 
@@ -197,8 +199,9 @@ def _(hvac, os, pd, psycopg):
     client = hvac.Client(url=VAULT_ADDR, token=VAULT_TOKEN)
 
     try:
-        secret = client.secrets.kv.v2.read_secret_version(path='Database')
-        db_credentials = secret['data']['data']
+        secret_path = f"{VAULT_PATH_PREFIX}/Database" if VAULT_PATH_PREFIX else "Database"
+        secret = client.secrets.kv.v1.read_secret(path=secret_path, mount_point=VAULT_MOUNT)
+        db_credentials = secret['data']
 
         DB_HOST = db_credentials.get('POSTGRES_HOST', 'postgres')
         DB_PORT = db_credentials.get('POSTGRES_PORT', '5432')
