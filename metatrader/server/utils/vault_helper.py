@@ -1,5 +1,5 @@
 """
-Helper simplifié pour accéder à HashiCorp Vault dans Airflow
+Helper simplifié pour accéder à HashiCorp Vault dans MetaTrader server
 """
 
 import hvac
@@ -10,12 +10,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class VaultHelper:
-    """Helper pour simplifier l'accès à Vault dans vos DAGs"""
+    """Helper pour simplifier l'accès à Vault"""
 
     def __init__(self):
         """Initialise la connexion à Vault"""
         self.vault_addr = os.getenv('VAULT_ADDR')
         self.vault_token = os.getenv('VAULT_ROOT_TOKEN')
+        self.mount_point = os.getenv('VAULT_MOUNT', 'OrionTrader')
 
         self.client = hvac.Client(
             url=self.vault_addr,
@@ -27,10 +28,10 @@ class VaultHelper:
 
     def get_secret(self, path: str, key: str = None):
         """
-        Récupère un secret depuis Vault
+        Récupère un secret depuis Vault (KV v2)
 
         Args:
-            path: Chemin du secret (ex: 'api/binance')
+            path: Chemin du secret (ex: 'Meta_trader', 'Database')
             key: Clé spécifique (optionnel, retourne tout si None)
 
         Returns:
@@ -38,17 +39,13 @@ class VaultHelper:
 
         Example:
             vault = get_vault()
-
-            # Récupérer toutes les clés
-            creds = vault.get_secret('api/binance')
-            # {'api_key': '...', 'api_secret': '...'}
-
-            # Récupérer une clé spécifique
-            api_key = vault.get_secret('api/binance', 'api_key')
-            # 'votre-clé'
+            creds = vault.get_secret('Meta_trader')
+            login = vault.get_secret('Meta_trader', 'MT5_LOGIN')
         """
         try:
-            response = self.client.secrets.kv.v2.read_secret_version(path=path)
+            response = self.client.secrets.kv.v2.read_secret_version(
+                path=path, mount_point=self.mount_point
+            )
             data = response['data']['data']
 
             if key:
@@ -60,45 +57,35 @@ class VaultHelper:
 
     def set_secret(self, path: str, **kwargs):
         """
-        Crée ou met à jour un secret dans Vault
+        Crée ou met à jour un secret dans Vault (KV v2)
 
         Args:
-            path: Chemin du secret (ex: 'airflow/results')
+            path: Chemin du secret
             **kwargs: Paires clé-valeur à stocker
-
-        Example:
-            vault = get_vault()
-            vault.set_secret('airflow/last-run',
-                timestamp='2024-01-01',
-                status='success',
-                profit=1234.56
-            )
         """
         try:
             self.client.secrets.kv.v2.create_or_update_secret(
                 path=path,
-                secret=kwargs
+                secret=kwargs,
+                mount_point=self.mount_point
             )
         except Exception as e:
             raise Exception(f"Failed to write secret at {path}: {str(e)}")
 
     def list_secrets(self, path: str = ''):
         """
-        Liste les secrets à un chemin donné
+        Liste les secrets à un chemin donné (KV v2)
 
         Args:
-            path: Chemin à lister (ex: 'api')
+            path: Chemin à lister
 
         Returns:
             Liste des noms de secrets
-
-        Example:
-            vault = get_vault()
-            secrets = vault.list_secrets('api')
-            # ['binance', 'mt5', 'discord']
         """
         try:
-            response = self.client.secrets.kv.v2.list_secrets(path=path)
+            response = self.client.secrets.kv.v2.list_secrets(
+                path=path, mount_point=self.mount_point
+            )
             return response['data']['keys']
         except Exception as e:
             raise Exception(f"Failed to list secrets at {path}: {str(e)}")
@@ -109,12 +96,10 @@ def get_vault() -> VaultHelper:
     """
     Retourne une instance singleton de VaultHelper
 
-    Example dans un DAG:
+    Example:
         from utils.vault_helper import get_vault
 
-        def ma_fonction():
-            vault = get_vault()
-            api_key = vault.get_secret('api/binance', 'api_key')
-            print(f"API Key: {api_key[:5]}...")
+        vault = get_vault()
+        login = vault.get_secret('Meta_trader', 'MT5_LOGIN')
     """
     return VaultHelper()

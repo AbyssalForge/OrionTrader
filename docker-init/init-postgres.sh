@@ -56,7 +56,8 @@ PGPASSWORD=$POSTGRES_PASSWORD psql -h ${POSTGRES_HOST:-postgres} -U $POSTGRES_US
             CREATE USER ${AIRFLOW_DB_USER} WITH PASSWORD '${AIRFLOW_DB_PASSWORD}';
             RAISE NOTICE '[OK] User ${AIRFLOW_DB_USER} created';
         ELSE
-            RAISE NOTICE '[SKIP] User ${AIRFLOW_DB_USER} already exists';
+            ALTER USER ${AIRFLOW_DB_USER} WITH PASSWORD '${AIRFLOW_DB_PASSWORD}';
+            RAISE NOTICE '[OK] User ${AIRFLOW_DB_USER} password updated';
         END IF;
 
         -- Utilisateur MLflow
@@ -64,7 +65,8 @@ PGPASSWORD=$POSTGRES_PASSWORD psql -h ${POSTGRES_HOST:-postgres} -U $POSTGRES_US
             CREATE USER ${MLFLOW_DB_USER} WITH PASSWORD '${MLFLOW_DB_PASSWORD}';
             RAISE NOTICE '[OK] User ${MLFLOW_DB_USER} created';
         ELSE
-            RAISE NOTICE '[SKIP] User ${MLFLOW_DB_USER} already exists';
+            ALTER USER ${MLFLOW_DB_USER} WITH PASSWORD '${MLFLOW_DB_PASSWORD}';
+            RAISE NOTICE '[OK] User ${MLFLOW_DB_USER} password updated';
         END IF;
 
         -- Utilisateur FastAPI
@@ -72,7 +74,8 @@ PGPASSWORD=$POSTGRES_PASSWORD psql -h ${POSTGRES_HOST:-postgres} -U $POSTGRES_US
             CREATE USER ${FASTAPI_DB_USER} WITH PASSWORD '${FASTAPI_DB_PASSWORD}';
             RAISE NOTICE '[OK] User ${FASTAPI_DB_USER} created';
         ELSE
-            RAISE NOTICE '[SKIP] User ${FASTAPI_DB_USER} already exists';
+            ALTER USER ${FASTAPI_DB_USER} WITH PASSWORD '${FASTAPI_DB_PASSWORD}';
+            RAISE NOTICE '[OK] User ${FASTAPI_DB_USER} password updated';
         END IF;
 
         -- Utilisateur Streamlit (lecture seule)
@@ -80,7 +83,8 @@ PGPASSWORD=$POSTGRES_PASSWORD psql -h ${POSTGRES_HOST:-postgres} -U $POSTGRES_US
             CREATE USER ${STREAMLIT_DB_USER} WITH PASSWORD '${STREAMLIT_DB_PASSWORD}';
             RAISE NOTICE '[OK] User ${STREAMLIT_DB_USER} created';
         ELSE
-            RAISE NOTICE '[SKIP] User ${STREAMLIT_DB_USER} already exists';
+            ALTER USER ${STREAMLIT_DB_USER} WITH PASSWORD '${STREAMLIT_DB_PASSWORD}';
+            RAISE NOTICE '[OK] User ${STREAMLIT_DB_USER} password updated';
         END IF;
     END
     \$\$;
