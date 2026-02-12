@@ -137,7 +137,8 @@ services:
     environment:
       VAULT_ADDR: ${VAULT_ADDR:-http://10.8.0.1:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN}
-      VAULT_MOUNT: ${VAULT_MOUNT:-secret}
+      VAULT_MOUNT: ${VAULT_MOUNT:-secrets}
+      VAULT_PATH_PREFIX: ${VAULT_PATH_PREFIX:-}
       POSTGRES_HOST: "127.0.0.1"
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-trading_data}
@@ -166,7 +167,8 @@ services:
       ENVIRONMENT: production
       VAULT_ADDR: ${VAULT_ADDR:-http://10.8.0.1:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN}
-      VAULT_MOUNT: ${VAULT_MOUNT:-secret}
+      VAULT_MOUNT: ${VAULT_MOUNT:-secrets}
+      VAULT_PATH_PREFIX: ${VAULT_PATH_PREFIX:-}
       FASTAPI_DB_HOST: ${POSTGRES_URL:-wg-easy}
       FASTAPI_DB_PORT: ${POSTGRES_PORT:-5432}
       FASTAPI_DB_NAME: ${FASTAPI_DB_NAME:-fastapi}
@@ -198,7 +200,8 @@ services:
     environment:
       VAULT_ADDR: ${VAULT_ADDR:-http://10.8.0.1:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN}
-      VAULT_MOUNT: ${VAULT_MOUNT:-secret}
+      VAULT_MOUNT: ${VAULT_MOUNT:-secrets}
+      VAULT_PATH_PREFIX: ${VAULT_PATH_PREFIX:-}
       POSTGRES_HOST: ${POSTGRES_URL:-wg-easy}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_DB: ${POSTGRES_DB:-trading_data}

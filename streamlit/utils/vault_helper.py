@@ -14,7 +14,8 @@ class VaultHelper:
         """Initialise la connexion à Vault"""
         self.vault_addr = os.getenv('VAULT_ADDR')
         self.vault_token = os.getenv('VAULT_TOKEN')
-        self.mount_point = os.getenv('VAULT_MOUNT', 'secret')
+        self.mount_point = os.getenv('VAULT_MOUNT', 'secrets')
+        self.path_prefix = os.getenv('VAULT_PATH_PREFIX', '')
 
         print(f"[INFO] Vault Address: {self.vault_addr}")
         print(f"[INFO] Vault Token: {self.vault_token[:10]}...")
@@ -27,12 +28,18 @@ class VaultHelper:
         if not self.client.is_authenticated():
             raise Exception("Failed to authenticate with Vault")
 
+    def _full_path(self, path: str) -> str:
+        """Construit le chemin complet avec le préfixe"""
+        if self.path_prefix:
+            return f"{self.path_prefix}/{path}"
+        return path
+
     def get_secret(self, path: str, key: str = None):
         """
-        Récupère un secret depuis Vault
+        Récupère un secret depuis Vault (KV v1)
 
         Args:
-            path: Chemin du secret (ex: 'Database')
+            path: Chemin du secret (ex: 'Database', 'api/binance')
             key: Clé spécifique (optionnel, retourne tout si None)
 
         Returns:
@@ -40,20 +47,15 @@ class VaultHelper:
 
         Example:
             vault = get_vault()
-
-            # Récupérer toutes les clés
             creds = vault.get_secret('Database')
-            # {'POSTGRES_HOST': '...', 'POSTGRES_PORT': '...', ...}
-
-            # Récupérer une clé spécifique
             host = vault.get_secret('Database', 'POSTGRES_HOST')
-            # 'postgres'
         """
         try:
-            response = self.client.secrets.kv.v2.read_secret_version(
-                path=path, mount_point=self.mount_point
+            response = self.client.secrets.kv.v1.read_secret(
+                path=self._full_path(path),
+                mount_point=self.mount_point
             )
-            data = response['data']['data']
+            data = response['data']
 
             if key:
                 return data.get(key)
@@ -64,7 +66,7 @@ class VaultHelper:
 
     def set_secret(self, path: str, **kwargs):
         """
-        Crée ou met à jour un secret dans Vault
+        Crée ou met à jour un secret dans Vault (KV v1)
 
         Args:
             path: Chemin du secret (ex: 'streamlit/config')
@@ -72,14 +74,11 @@ class VaultHelper:
 
         Example:
             vault = get_vault()
-            vault.set_secret('streamlit/config',
-                theme='dark',
-                refresh_interval=30
-            )
+            vault.set_secret('streamlit/config', theme='dark', refresh_interval=30)
         """
         try:
-            self.client.secrets.kv.v2.create_or_update_secret(
-                path=path,
+            self.client.secrets.kv.v1.create_or_update_secret(
+                path=self._full_path(path),
                 secret=kwargs,
                 mount_point=self.mount_point
             )
@@ -88,7 +87,7 @@ class VaultHelper:
 
     def list_secrets(self, path: str = ''):
         """
-        Liste les secrets à un chemin donné
+        Liste les secrets à un chemin donné (KV v1)
 
         Args:
             path: Chemin à lister (ex: 'api')
@@ -102,8 +101,9 @@ class VaultHelper:
             # ['Database', 'api', 'streamlit']
         """
         try:
-            response = self.client.secrets.kv.v2.list_secrets(
-                path=path, mount_point=self.mount_point
+            response = self.client.secrets.kv.v1.list_secrets(
+                path=self._full_path(path),
+                mount_point=self.mount_point
             )
             return response['data']['keys']
         except Exception as e:
@@ -118,9 +118,7 @@ def get_vault() -> VaultHelper:
     Example:
         from utils.vault_helper import get_vault
 
-        def get_db_credentials():
-            vault = get_vault()
-            creds = vault.get_secret('Database')
-            return creds
+        vault = get_vault()
+        creds = vault.get_secret('Database')
     """
     return VaultHelper()
