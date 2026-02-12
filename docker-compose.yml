@@ -135,8 +135,7 @@ services:
       PYTHONPATH: /opt/airflow:/opt/airflow/dags:/opt/airflow/utils:/opt/airflow/services:/opt/airflow/clients:/opt/airflow/config
       VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
-      VAULT_MOUNT: ${VAULT_MOUNT:-secrets}
-      VAULT_PATH_PREFIX: ${VAULT_PATH_PREFIX:-}
+      VAULT_MOUNT: ${VAULT_MOUNT:-OrionTrader}
       MT5_HOST: ${MT5_HOST:-host.docker.internal}
       MT5_PORT: ${MT5_PORT:-9090}
     volumes:
@@ -171,8 +170,7 @@ services:
       # Optional: MLFlow et Vault
       VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
-      VAULT_MOUNT: ${VAULT_MOUNT:-secrets}
-      VAULT_PATH_PREFIX: ${VAULT_PATH_PREFIX:-}
+      VAULT_MOUNT: ${VAULT_MOUNT:-OrionTrader}
       # FastAPI Auth Database
       FASTAPI_DB_HOST: ${POSTGRES_URL:-postgres}
       FASTAPI_DB_PORT: ${POSTGRES_PORT:-5432}
@@ -282,8 +280,7 @@ services:
     environment:
       VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
-      VAULT_MOUNT: ${VAULT_MOUNT:-secrets}
-      VAULT_PATH_PREFIX: ${VAULT_PATH_PREFIX:-}
+      VAULT_MOUNT: ${VAULT_MOUNT:-OrionTrader}
     volumes:
       - ./marimo/notebooks:/app/notebooks:rw  # Hot-reload notebooks
       - ./mlflow/mlruns:/mlflow/mlruns:rw  # Partage artifacts MLflow
@@ -309,8 +306,7 @@ services:
       # Vault
       VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
-      VAULT_MOUNT: ${VAULT_MOUNT:-secrets}
-      VAULT_PATH_PREFIX: ${VAULT_PATH_PREFIX:-}
+      VAULT_MOUNT: ${VAULT_MOUNT:-OrionTrader}
       # FastAPI endpoint
       FASTAPI_URL: http://fastapi:8000
       # FastAPI Authentication Token
