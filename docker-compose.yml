@@ -1,7 +1,7 @@
 version: "3.9"
 
 x-airflow-env: &airflow-env
-  AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@postgres:5432/${AIRFLOW_DB_NAME}
+  AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@${POSTGRES_URL:-postgres}:5432/${AIRFLOW_DB_NAME}
   AIRFLOW__DATABASE__LOAD_DEFAULT_CONNECTIONS: "false"
   AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "True"
   AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -50,7 +50,7 @@ services:
       - oriontrader_network
 
   postgres-init:
-    image: postgres:15
+    image: python:3.11-slim
     container_name: orion_postgres_init
     depends_on:
       postgres:
@@ -70,9 +70,10 @@ services:
       FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}
       STREAMLIT_DB_USER: ${STREAMLIT_DB_USER:-streamlit}
       STREAMLIT_DB_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
+      POSTGRES_HOST: ${POSTGRES_URL:-postgres}
     volumes:
-      - ./docker-init/init-postgres.sh:/init-postgres.sh
-    command: bash /init-postgres.sh
+      - ./docker-init/init-postgres.py:/init-postgres.py
+    command: bash -c "pip install psycopg2-binary -q && python /init-postgres.py"
     networks:
       - oriontrader_network
     restart: "no"
