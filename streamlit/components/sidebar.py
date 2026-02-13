@@ -1,5 +1,5 @@
 """
-Sidebar - Barre latérale avec configuration et statuts
+Sidebar - Barre latérale avec statuts et filtres
 """
 
 import streamlit as st
@@ -8,37 +8,28 @@ from utils.api_client import get_health_status
 
 
 def render_sidebar():
-    """
-    Affiche la sidebar avec les connexions et filtres
-
-    Returns:
-        dict: Configuration sélectionnée (time_range, auto_refresh, refresh_interval)
-    """
     with st.sidebar:
-        st.title("⚙️ Configuration")
+        st.title("Configuration")
 
-        st.subheader("🔌 Connexion")
+        st.subheader("Connexions")
 
-        db_status = test_database_connection()
-        if db_status:
-            st.success("✅ Database: Connectée")
+        if test_database_connection():
+            st.success("Base de données : connectée")
         else:
-            st.error("❌ Database: Déconnectée")
+            st.error("Base de données : déconnectée")
 
         try:
             health = get_health_status()
             if health.get("status") == "ok":
-                st.success("✅ API: Disponible")
-                total_rows = sum(health.get('tables', {}).values())
-                st.caption(f"Tables: {total_rows:,} lignes")
+                st.success("API : disponible")
             else:
-                st.warning("⚠️ API: Indisponible")
+                st.warning("API : indisponible")
         except Exception:
-            st.error("❌ API: Erreur connexion")
+            st.error("API : erreur de connexion")
 
         st.divider()
 
-        st.subheader("📅 Période")
+        st.subheader("Période")
 
         time_range = st.selectbox(
             "Plage temporelle",
@@ -48,7 +39,7 @@ def render_sidebar():
 
         st.divider()
 
-        st.subheader("🔄 Rafraîchissement")
+        st.subheader("Rafraîchissement")
 
         auto_refresh = st.checkbox("Auto-refresh", value=False)
         refresh_interval = 60
@@ -63,9 +54,7 @@ def render_sidebar():
             )
 
         st.divider()
-
         st.caption("OrionTrader v3.0")
-        st.caption("Streamlit Dashboard")
 
     return {
         "time_range": time_range,

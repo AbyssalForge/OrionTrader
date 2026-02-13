@@ -1,150 +1,65 @@
 """
-OrionTrader - Dashboard Streamlit Simplifié
-Application simple avec données Wikipedia et modèle ML
+OrionTrader - Dashboard principal
 """
 
 import streamlit as st
 from datetime import datetime
 
 st.set_page_config(
-    page_title="OrionTrader - MLOps Dashboard",
-    page_icon="📊",
+    page_title="OrionTrader",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-
 with st.sidebar:
-
     st.markdown("""
-    ### Pages disponibles
+    ### Navigation
 
-    - **🏦 Wikipedia Data**: Données d'indices boursiers scrapées
-    - **🤖 ML Model**: Prédictions du modèle LightGBM
-
-    ### ℹ️ Informations
-    - **Données**: 
-        - Wikipedia 
-        - API Yahoo Finance 
-        - MetaTrader 
-        - Eurostats
-    - **Modèle**: LightGBM Classification
+    - **Wikipedia Data** : Données d'indices boursiers
+    - **ML Model** : Prédictions EUR/USD
+    - **Analytics** : Analyse des marchés
     """)
 
     st.divider()
+    st.caption(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
-    st.caption(f"🕒 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-
-st.title("OrionTrader - MLOps Dashboard")
-st.markdown("""
-Bienvenue sur le dashboard OrionTrader ! Cette application vous permet de :
-- 📈 Visualiser les données d'indices boursiers (Wikipedia)
-- 🤖 Utiliser le modèle ML pour prédire la direction EUR/USD
-""")
+st.title("OrionTrader")
+st.markdown("Plateforme d'analyse et de prédiction des marchés financiers.")
 
 st.divider()
-
-
-st.header("Accès rapide")
 
 col1, col2 = st.columns(2)
 
 with col1:
     st.info("""
-    ### 🏦 Wikipedia Data
+    ### Données de marché
 
-    Consultez les données d'indices boursiers scrapées depuis Wikipedia :
-    - CAC 40 (France)
-    - S&P 500 (USA)
-    - NASDAQ 100 (USA)
-    - Dow Jones (USA)
-
-    Informations disponibles : ticker, entreprise, secteur, pays, etc.
+    Consultez les données d'indices boursiers (CAC 40, S&P 500, NASDAQ 100, Dow Jones) :
+    entreprises, secteurs, pays et appartenance aux indices.
     """)
 
 with col2:
     st.success("""
-    ### 🤖 Modèle ML
+    ### Prédiction EUR/USD
 
-    Utilisez le modèle de prédiction LightGBM pour prédire la direction du marché EUR/USD.
-
-    Le modèle utilise :
-    - Données OHLCV (EUR/USD)
-    - Indicateurs externes (optionnels)
-    - Features engineering automatique
+    Entrez les données OHLCV d'une bougie EUR/USD pour obtenir un signal
+    directionnel (LONG / NEUTRAL / SHORT) avec niveau de confiance.
     """)
 
 st.divider()
 
-
-st.header("📊 Statistiques rapides")
-
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric(
-        label="Indices suivis",
-        value="4",
-        delta="CAC40, S&P500, etc.",
-        help="Nombre d'indices boursiers scrapés"
-    )
+    st.metric("Indices suivis", "4", help="CAC 40, S&P 500, NASDAQ 100, Dow Jones")
 
 with col2:
-    st.metric(
-        label="Entreprises",
-        value="~700",
-        delta="Unique tickers",
-        help="Nombre d'entreprises dans la base"
-    )
+    st.metric("Entreprises", "~700", help="Nombre d'entreprises dans la base")
 
 with col3:
-    st.metric(
-        label="Modèle",
-        value="LightGBM",
-        delta="Production",
-        help="Modèle actuellement déployé"
-    )
-
-with col4:
-    st.metric(
-        label="Accuracy",
-        value="~75%",
-        delta="Balanced",
-        help="Performance du modèle"
-    )
+    st.metric("Marché couvert", "EUR/USD", help="Paire de devises principale")
 
 st.divider()
 
-
-with st.expander("Comment utiliser cette application ?"):
-    st.markdown("""
-    ### Navigation
-
-    Utilisez la barre latérale de gauche pour naviguer entre les pages :
-
-    1. **🏦 Wikipedia Data** :
-       - Explorez les données d'indices boursiers
-       - Filtrez par indice, secteur, pays
-       - Téléchargez les données
-
-    2. **🤖 ML Model** :
-       - Entrez les données OHLCV
-       - Ajoutez des indicateurs optionnels
-       - Obtenez une prédiction avec les probabilités
-
-    ### Architecture MLOps
-
-    Ce projet implémente une architecture MLOps complète :
-
-    - **Airflow** : Orchestration des pipelines (scraping, transformation)
-    - **MLflow** : Tracking des modèles et versioning
-    - **FastAPI** : API de prédiction
-    - **Streamlit** : Interface utilisateur
-    - **PostgreSQL** : Base de données
-    - **GitHub Actions** : CI/CD automatisé
-    """)
-
-st.divider()
-
-st.caption("⚠️ **Disclaimer**: Cette application est fournie à titre éducatif. Les prédictions ne constituent pas des conseils financiers.")
+st.caption("Disclaimer : Cette application est fournie à titre informatif. Les prédictions ne constituent pas des conseils financiers.")

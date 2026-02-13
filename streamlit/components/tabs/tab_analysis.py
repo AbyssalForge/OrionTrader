@@ -1,102 +1,60 @@
 """
-Tab Analyse - Opportunités et alertes
+Tab Analyse - Opportunités et alertes de marché
 """
 
 import streamlit as st
 import pandas as pd
-import sys
-
-sys.path.insert(0, '/opt/airflow')
-
-from utils.database import get_db_session
-from models import MarketSnapshotM15
+from utils.database import get_db_connection
 
 
 def render_analysis_tab():
-    """Affiche l'onglet Analyse"""
-    st.subheader("Analyse Détaillée")
+    st.subheader("Analyse du marché")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("### 🎯 Opportunités Actuelles")
+        st.markdown("### Opportunités détectées")
 
         try:
-            session = get_db_session()
-
-            query = session.query(MarketSnapshotM15).filter(
-                MarketSnapshotM15.signal_confidence_score > 0.6,
-                MarketSnapshotM15.event_window_active == False
-            ).order_by(
-                MarketSnapshotM15.signal_confidence_score.desc()
-            ).limit(10)
-
-            df_opps = pd.read_sql(query.statement, session.bind)
+            conn = get_db_connection()
+            df_opps = pd.read_sql("""
+                SELECT time, signal_confidence_score, regime_composite, volatility_regime
+                FROM market_snapshot_m15
+                WHERE signal_confidence_score > 0.6
+                  AND event_window_active = false
+                ORDER BY signal_confidence_score DESC
+                LIMIT 10
+            """, conn)
+            conn.close()
 
             if len(df_opps) > 0:
-                df_display = df_opps[[
-                    'time',
-                    'signal_confidence_score',
-                    'regime_composite',
-                    'volatility_regime'
-                ]].copy()
-
-                df_display.columns = [
-                    'Temps',
-                    'Confidence',
-                    'Régime',
-                    'Volatilité'
-                ]
-
-                st.dataframe(
-                    df_display,
-                    use_container_width=True,
-                    hide_index=True
-                )
+                df_opps.columns = ['Temps', 'Confiance', 'Régime', 'Volatilité']
+                st.dataframe(df_opps, use_container_width=True, hide_index=True)
             else:
-                st.info("Aucune opportunité détectée actuellement")
-
-            session.close()
+                st.info("Aucune opportunité détectée actuellement.")
 
         except Exception as e:
-            st.error(f"Erreur: {e}")
+            st.error(f"Erreur : {e}")
 
     with col2:
-        st.markdown("### ⚠️ Alertes")
+        st.markdown("### Alertes de divergence")
 
         try:
-            session = get_db_session()
-
-            query = session.query(MarketSnapshotM15).filter(
-                MarketSnapshotM15.signal_divergence_count > 1
-            ).order_by(
-                MarketSnapshotM15.time.desc()
-            ).limit(10)
-
-            df_alerts = pd.read_sql(query.statement, session.bind)
+            conn = get_db_connection()
+            df_alerts = pd.read_sql("""
+                SELECT time, signal_divergence_count, regime_composite
+                FROM market_snapshot_m15
+                WHERE signal_divergence_count > 1
+                ORDER BY time DESC
+                LIMIT 10
+            """, conn)
+            conn.close()
 
             if len(df_alerts) > 0:
-                df_display = df_alerts[[
-                    'time',
-                    'signal_divergence_count',
-                    'regime_composite'
-                ]].copy()
-
-                df_display.columns = [
-                    'Temps',
-                    'Divergences',
-                    'Régime'
-                ]
-
-                st.dataframe(
-                    df_display,
-                    use_container_width=True,
-                    hide_index=True
-                )
+                df_alerts.columns = ['Temps', 'Divergences', 'Régime']
+                st.dataframe(df_alerts, use_container_width=True, hide_index=True)
             else:
-                st.success("Aucune divergence détectée")
-
-            session.close()
+                st.success("Aucune divergence détectée.")
 
         except Exception as e:
-            st.error(f"Erreur: {e}")
+            st.error(f"Erreur : {e}")
