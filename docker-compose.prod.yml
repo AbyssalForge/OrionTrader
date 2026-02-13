@@ -92,8 +92,9 @@ services:
       - server
       - --backend-store-uri
       - postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@127.0.0.1:5432/${MLFLOW_DB_NAME}
-      - --default-artifact-root
-      - file:///mlflow/mlruns
+      - --artifacts-destination
+      - /mlflow/mlruns
+      - --serve-artifacts
       - --host
       - 0.0.0.0
       - --port

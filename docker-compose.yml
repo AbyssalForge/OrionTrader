@@ -72,8 +72,8 @@ services:
       STREAMLIT_DB_PASSWORD: ${STREAMLIT_DB_PASSWORD:-streamlit}
       POSTGRES_HOST: ${POSTGRES_URL:-postgres}
     volumes:
-      - ./docker-init/init-postgres.sh:/init-postgres.sh
-    command: bash -c "pip install psycopg2-binary -q && python /init-postgres.sh"
+      - ./docker-init/init-postgres.py:/init-postgres.py
+    command: bash -c "pip install psycopg2-binary -q && python /init-postgres.py"
     networks:
       - oriontrader_network
     restart: "no"
@@ -139,6 +139,8 @@ services:
       VAULT_MOUNT: ${VAULT_MOUNT:-OrionTrader}
       MT5_HOST: ${MT5_HOST:-host.docker.internal}
       MT5_PORT: ${MT5_PORT:-9090}
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://mlflow:5000}
+      MLFLOW_TRACKING_INSECURE_TLS: "true"
     volumes:
       - ./airflow:/opt/airflow
       - airflow-logs:/opt/airflow/logs
@@ -316,11 +318,11 @@ services:
       - ./streamlit:/app:rw  # Hot-reload sur modification code
       - ./airflow/models:/opt/airflow/models:ro  # Accès aux models SQLAlchemy
     ports:
-      - "8501:8501"
+      - "8502:8502"
     networks:
       - oriontrader_network
     restart: always
-    command: streamlit run app.py --server.address=0.0.0.0 --server.port=8501 --server.fileWatcherType=poll
+    command: streamlit run app.py --server.address=0.0.0.0 --server.port=8502 --server.fileWatcherType=poll
 
 networks:
   oriontrader_network:

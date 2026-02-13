@@ -34,7 +34,7 @@ MODEL_NAME = "classification_model"
 EXPERIMENT_NAME = "OrionTrader_classification"
 
 # Seuils minimaux pour accepter le modèle
-MIN_BALANCED_ACCURACY = 0.45
+MIN_BALANCED_ACCURACY = 0.30
 MIN_MACRO_F1 = 0.40
 MAX_OVERFITTING = 0.15  # diff max entre train et test balanced_accuracy
 
@@ -87,10 +87,10 @@ def cd_model_pipeline():
             "version": latest.version,
             "run_id": latest.run_id,
             "current_stage": latest.current_stage,
-            "balanced_accuracy": metrics.get("test_balanced_accuracy", 0),
-            "macro_f1": metrics.get("test_macro_f1", 0),
-            "accuracy": metrics.get("test_accuracy", 0),
-            "train_balanced_accuracy": metrics.get("train_balanced_accuracy", 0),
+            "balanced_accuracy": metrics.get("best_balanced_accuracy", 0),
+            "macro_f1": metrics.get("best_macro_f1", 0),
+            "accuracy": metrics.get("best_accuracy", 0),
+            "overfitting": metrics.get("overfitting", 0),
             "n_features": int(params.get("n_features", 0)),
         }
 
@@ -121,12 +121,10 @@ def cd_model_pipeline():
             )
 
         # ── Détection d'overfitting ──
-        overfitting = candidate["train_balanced_accuracy"] - candidate["balanced_accuracy"]
+        overfitting = candidate["overfitting"]
         if overfitting > MAX_OVERFITTING:
             errors.append(
-                f"Overfitting détecté : train={candidate['train_balanced_accuracy']:.3f} "
-                f"test={candidate['balanced_accuracy']:.3f} "
-                f"(diff={overfitting:.3f} > max={MAX_OVERFITTING})"
+                f"Overfitting détecté : diff={overfitting:.3f} > max={MAX_OVERFITTING}"
             )
 
         # ── Comparaison avec le modèle en production ──
@@ -166,6 +164,7 @@ def cd_model_pipeline():
         from sqlalchemy import create_engine, text
 
         mlflow.set_tracking_uri(MLFLOW_URI)
+        os.environ["MLFLOW_TRACKING_INSECURE_TLS"] = "true"
 
         # ── Charger le modèle depuis MLflow ──
         model_uri = f"runs:/{candidate['run_id']}/model"

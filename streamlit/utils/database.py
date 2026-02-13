@@ -35,9 +35,11 @@ def get_database_credentials() -> Dict[str, str]:
 
             print("[OK] Database credentials retrieved from Vault")
 
+            # POSTGRES_HOST env var a priorité sur Vault
+            # (dans Docker, wg-easy est le hostname réseau, pas 10.8.0.1)
             return {
-                "POSTGRES_HOST": credentials.get("POSTGRES_HOST"),
-                "POSTGRES_PORT": str(credentials.get("POSTGRES_PORT")),
+                "POSTGRES_HOST": os.getenv("POSTGRES_HOST") or credentials.get("POSTGRES_HOST"),
+                "POSTGRES_PORT": os.getenv("POSTGRES_PORT") or str(credentials.get("POSTGRES_PORT")),
                 "POSTGRES_DB": credentials.get("POSTGRES_DB"),
                 "POSTGRES_USER": credentials.get("POSTGRES_USER"),
                 "POSTGRES_PASSWORD": credentials.get("POSTGRES_PASSWORD"),
