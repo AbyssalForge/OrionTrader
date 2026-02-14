@@ -18,7 +18,7 @@ from app.config import settings
 from app.core import get_db
 from app.core.database import test_connection, get_table_counts
 from app.core.auth_database import test_auth_connection, init_auth_tables
-from app.routes import market, data, signals, model, auth
+from app.routes import market, data, signals, model, auth, monitoring
 
 
 
@@ -59,6 +59,11 @@ app = FastAPI(
 - `GET /signals/event-window` - Signaux pendant fenêtres d'événements macro
 - `GET /signals/stats` - Statistiques et distribution des signaux
 
+### 📡 Monitoring (3 endpoints)
+- `GET /monitoring/metrics` - Métriques Prometheus (scraping, format texte)
+- `GET /monitoring/stats` - Statistiques temps réel en JSON (confiance, latence, cache)
+- `GET /monitoring/drift` - Détection du drift de distribution des prédictions
+
 ### 🤖 ML Model (5 endpoints)
 - `POST /model/predict` - Prédiction unique (SHORT/NEUTRAL/LONG)
 - `POST /model/predict/batch` - Prédictions en batch pour backtesting
@@ -74,7 +79,7 @@ app = FastAPI(
 - **Machine Learning**: Features séparées via `/data/features/*` pour entraînement
 - **Analyse technique**: OHLCV haute fréquence via `/market/ohlcv/m15`
 - **Analyse macro**: Données économiques via `/data/features/macro`
-- **Monitoring**: Health check via `/health`, métriques modèle via `/model/metrics`
+- **Monitoring**: Health check via `/health`, métriques modèle via `/model/metrics`, stats temps réel via `/monitoring/stats`
 
 ## 🔑 Paramètres principaux
 
@@ -109,6 +114,7 @@ app.include_router(market.router, prefix="/market", tags=["Market"])
 app.include_router(data.router, prefix="/data", tags=["Data & Features"])
 app.include_router(signals.router, prefix="/signals", tags=["Trading Signals"])
 app.include_router(model.router, prefix="/model", tags=["ML Model"])
+app.include_router(monitoring.router, prefix="/monitoring", tags=["Monitoring"])
 
 
 

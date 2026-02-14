@@ -26,6 +26,7 @@ from app.core.metrics import (
     track_cache_miss,
     prediction_errors
 )
+from app.core import stats as monitoring_stats
 from app.core.auth import verify_api_token
 from app.models.api_token import APIToken
 
@@ -80,9 +81,11 @@ def load_model_with_cache(version: Optional[str] = None, stage: Optional[str] = 
 
     if _model_cache["model"] is not None and _model_cache["version"] == cache_key:
         track_cache_hit()
+        monitoring_stats.update_cache(hit=True)
         return _model_cache["model"]
 
     track_cache_miss()
+    monitoring_stats.update_cache(hit=False)
     model = get_model(version, stage)
 
     _model_cache["model"] = model
@@ -232,6 +235,7 @@ def predict(
     **Use case:** Trading en temps réel avec données brutes uniquement
     """
     try:
+        start_time = time.time()
         model = load_model_with_cache(version, stage)
 
         features_dict = transform_raw_to_features(request)
@@ -283,10 +287,19 @@ def predict(
         response = format_prediction_response(prediction, probabilities, version or stage)
         track_prediction_metrics(prediction, response.probabilities, version or stage)
 
+        latency_ms = (time.time() - start_time) * 1000
+        monitoring_stats.update_prediction(
+            prediction_label=response.prediction_label,
+            confidence=response.confidence,
+            latency_ms=latency_ms,
+            version=version or stage,
+        )
+
         return response
 
     except Exception as e:
         prediction_errors.labels(error_type=type(e).__name__).inc()
+        monitoring_stats.update_error()
         raise HTTPException(status_code=500, detail=f"Erreur lors de la prédiction: {str(e)}")
 
 
@@ -517,6 +530,7 @@ def reload_model(
         model = load_model_with_cache(version, stage)
 
         track_model_reload()
+        monitoring_stats.update_reload()
 
         return {
             "status": "success",
