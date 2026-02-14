@@ -145,8 +145,34 @@ def transform_raw_to_features(data: SimplePredictionRequest) -> dict:
     features['us10y_close'] = data.us10y_close if data.us10y_close is not None else 4.5
     features['us10y_trend'] = data.us10y_trend if data.us10y_trend is not None else 0.0
 
-    features['vix_close'] = data.vix_close if data.vix_close is not None else 15.0
+    vix = data.vix_close if data.vix_close is not None else 15.0
+    features['vix_close'] = vix
     features['vix_spike'] = data.vix_spike if data.vix_spike is not None else 0.0
+    features['market_stress'] = 1.0 if vix > 20.0 else 0.0
+
+    # dxy_strength = écart du DXY par rapport à sa moyenne (proxy: tendance 4h)
+    dxy = data.dxy_close if data.dxy_close is not None else 104.0
+    dxy_trend_4h = data.dxy_trend_4h if data.dxy_trend_4h is not None else 0.0
+    features['dxy_strength'] = dxy_trend_4h  # approximation: tendance = force relative
+
+    # Lag features : approx basée sur le momentum actuel (pas de données historiques)
+    cr = features['close_return']
+    features['close_return_lag_1'] = cr * 0.8
+    features['close_return_lag_2'] = cr * 0.6
+    features['close_return_lag_3'] = cr * 0.4
+    m1h = features['momentum_1h']
+    features['momentum_1h_lag_1'] = m1h * 0.8
+    features['momentum_1h_lag_2'] = m1h * 0.6
+    features['momentum_1h_lag_3'] = m1h * 0.4
+
+    # Signal composite : alignement DXY vs momentum EUR/USD
+    dxy_bias = -1.0 if dxy_trend_4h > 0.2 else (1.0 if dxy_trend_4h < -0.2 else 0.0)
+    momentum_bias = 1.0 if cr > 0 else (-1.0 if cr < 0 else 0.0)
+    features['macro_micro_aligned'] = 1.0 if dxy_bias == momentum_bias else 0.0
+    features['trend_strength_composite'] = (momentum_bias + dxy_bias) / 2.0
+    features['signal_confidence_score'] = min(abs(cr) * 100, 1.0)
+    features['signal_divergence_count'] = 0 if dxy_bias == momentum_bias else 1
+    features['euro_strength_bias'] = momentum_bias
 
     default_features = {
         'gdp_growth': 2.0,
@@ -163,8 +189,11 @@ def transform_raw_to_features(data: SimplePredictionRequest) -> dict:
         'confidence_score': 0.5,
         'signal_coherence': 0.5,
         'event_window': 0,
+        'event_window_active': 0,
         'high_impact_event': 0,
-        'economic_surprise': 0.0
+        'economic_surprise': 0.0,
+        'vix_level': 0.0,
+        'vix_change': 0.0,
     }
 
     for key, value in default_features.items():
