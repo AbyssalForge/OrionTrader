@@ -23,9 +23,14 @@ RUN pip install --upgrade pip setuptools wheel \
 # Créer les dossiers nécessaires
 RUN mkdir -p /opt/airflow/dags /opt/airflow/plugins /opt/airflow/config /opt/airflow/logs
 
+# Installer rpyc pour la connexion au serveur MT5
+RUN pip install --no-cache-dir rpyc
+
 # Copier et installer les dépendances supplémentaires
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt || true
+# Installer les packages en excluant MetaTrader5 et mt5linux (Windows only ou nécessite compilation)
+RUN grep -v "MetaTrader5\|mt5linux" /tmp/requirements.txt > /tmp/requirements_filtered.txt && \
+    pip install --no-cache-dir -r /tmp/requirements_filtered.txt
 
 # Port Webserver
 EXPOSE 8080

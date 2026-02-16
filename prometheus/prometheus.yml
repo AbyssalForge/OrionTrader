@@ -1,23 +1,50 @@
+# Configuration Prometheus pour OrionTrader
+# Collecte des métriques de FastAPI, MLflow et services système
+
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 15s  # Collecte toutes les 15 secondes
+  evaluation_interval: 15s  # Évaluation des règles toutes les 15 secondes
+  scrape_timeout: 10s
+
+  # Labels externes ajoutés à toutes les séries temporelles
+  external_labels:
+    monitor: 'oriontrader-monitor'
+    environment: 'production'
+
+# ============================================================================
+# ALERT RULES - Règles d'alerte
+# ============================================================================
+
+rule_files:
+  - '/etc/prometheus/alert.rules.yml'
+
+# ============================================================================
+# SCRAPE CONFIGS - Collecte des métriques
+# ============================================================================
 
 scrape_configs:
+  # Prometheus self-monitoring
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
+  # Pushgateway - Pour métriques batch (Airflow, etc.)
   - job_name: 'pushgateway'
     honor_labels: true
     static_configs:
       - targets: ['pushgateway:9091']
 
+  # FastAPI - Métriques applicatives et ML (PRIORITAIRE)
   - job_name: 'fastapi'
     static_configs:
       - targets: ['fastapi:8000']
     metrics_path: '/metrics'
+    scrape_interval: 5s  # Plus fréquent pour les prédictions ML
+    scrape_timeout: 5s
 
+  # Airflow - Métriques du pipeline de données
   - job_name: 'airflow'
     static_configs:
       - targets: ['airflow:8080']
     metrics_path: '/metrics'
+    scrape_interval: 30s

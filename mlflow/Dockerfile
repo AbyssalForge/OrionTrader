@@ -8,8 +8,11 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir \
-    mlflow==2.9.2 \
+    mlflow==3.8.0 \
     psycopg2-binary==2.9.9
+
+# Désactiver la vérification du Host header pour éviter les erreurs 403
+ENV MLFLOW_HOST="*"
 
 EXPOSE 5000
 

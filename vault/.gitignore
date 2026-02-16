@@ -1,0 +1,8 @@
+# Ne jamais committer les clés Vault
+.vault-keys
+!.vault-keys.example
+init-output.json
+init-output.txt
+
+# Ne jamais committer les données Vault
+data/

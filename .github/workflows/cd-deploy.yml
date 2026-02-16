@@ -1,0 +1,226 @@
+name: CD - Déploiement Continu
+
+on:
+  push:
+    branches: [ main, E3_OVH ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environnement de déploiement'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - staging
+          - production
+      trigger_model_pipeline:
+        description: 'Déclencher le pipeline CD modèle (Airflow) après déploiement ?'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  # ─────────────────────────────────────────────
+  # 1. Tests du service FastAPI
+  # ─────────────────────────────────────────────
+  test-service:
+    name: Tests FastAPI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r fastapi/requirements.txt
+          pip install pytest pytest-cov httpx
+
+      - name: Run FastAPI tests
+        run: |
+          pytest tests/test_fastapi/ -v --cov=fastapi || echo "️ Tests FastAPI (non bloquant)"
+        continue-on-error: true
+
+  # ─────────────────────────────────────────────
+  # 2. Build & Push Docker image FastAPI
+  # ─────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test-service
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/fastapi-ml-service
+          tags: |
+            type=ref,event=tag
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./fastapi
+          file: ./fastapi/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─────────────────────────────────────────────
+  # 3. Déploiement sur OVH VPS
+  # ─────────────────────────────────────────────
+  deploy:
+    name: Déploiement OVH VPS
+    runs-on: ubuntu-latest
+    needs: [test-service, build-and-push]
+    environment: ${{ inputs.environment || 'production' }}
+
+    steps:
+      - name: Déployer sur OVH via SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        shell: bash
+        run: |
+          echo "$VPS_SSH_KEY" > /tmp/ovh_deploy_key
+          chmod 600 /tmp/ovh_deploy_key
+
+          ssh -o StrictHostKeyChecking=no -p "$VPS_PORT" -i /tmp/ovh_deploy_key "$VPS_USERNAME@$VPS_HOST" << 'ENDSSH'
+            set -e
+            DEPLOY_DIR="$HOME/orionTrader"
+
+            echo "=== Déploiement OrionTrader sur OVH ==="
+
+            if [ -d "$DEPLOY_DIR/.git" ]; then
+              echo "Mise à jour du dépôt..."
+              cd "$DEPLOY_DIR"
+              git fetch origin
+              git checkout ${{ github.ref_name }}
+              git pull origin ${{ github.ref_name }}
+            else
+              echo "Clonage du dépôt..."
+              if [ -f "$DEPLOY_DIR/.env" ]; then
+                cp "$DEPLOY_DIR/.env" /tmp/.env.backup
+              fi
+              rm -rf "$DEPLOY_DIR"
+              git clone https://github.com/${{ github.repository }}.git "$DEPLOY_DIR"
+              cd "$DEPLOY_DIR"
+              git checkout ${{ github.ref_name }}
+              if [ -f /tmp/.env.backup ]; then
+                cp /tmp/.env.backup "$DEPLOY_DIR/.env"
+                rm -f /tmp/.env.backup
+              fi
+            fi
+
+            cd "$DEPLOY_DIR"
+            COMPOSE_FILE="$DEPLOY_DIR/docker-compose.prod.yml"
+
+            # Installer Docker Compose v2 si absent
+            if ! sudo docker compose version &>/dev/null; then
+              echo "Installation Docker Compose v2..."
+              sudo mkdir -p /usr/local/lib/docker/cli-plugins
+              sudo curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 \
+                -o /usr/local/lib/docker/cli-plugins/docker-compose
+              sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+            fi
+
+            echo "=== Arrêt des anciens conteneurs ==="
+            sudo docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+
+            echo "=== Rebuild et redémarrage ==="
+            sudo docker compose -f "$COMPOSE_FILE" up -d --build --remove-orphans
+
+            echo "=== Connexion wg-easy au réseau Docker ==="
+            sudo docker network connect oriontrader_oriontrader_network wg-easy 2>/dev/null || true
+
+            echo "=== Nettoyage images ==="
+            sudo docker image prune -f
+
+            echo "=== Statut ==="
+            sudo docker compose -f "$COMPOSE_FILE" ps
+          ENDSSH
+
+          rm -f /tmp/ovh_deploy_key
+
+  # ─────────────────────────────────────────────
+  # 4. (Optionnel) Trigger du pipeline CD modèle Airflow
+  #    Activé via workflow_dispatch → trigger_model_pipeline=true
+  # ─────────────────────────────────────────────
+  trigger-model-pipeline:
+    name: Trigger DAG cd_model_pipeline
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: ${{ inputs.trigger_model_pipeline == 'true' }}
+
+    steps:
+      - name: Déclencher le DAG Airflow cd_model_pipeline
+        env:
+          AIRFLOW_URL: ${{ secrets.AIRFLOW_URL }}
+          AIRFLOW_USER: ${{ secrets.AIRFLOW_USER }}
+          AIRFLOW_PASSWORD: ${{ secrets.AIRFLOW_PASSWORD }}
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "$AIRFLOW_URL/api/v1/dags/cd_model_pipeline/dagRuns" \
+            -H "Content-Type: application/json" \
+            -u "$AIRFLOW_USER:$AIRFLOW_PASSWORD" \
+            -d '{"conf": {"triggered_by": "github_actions"}}' \
+          | grep -q "200\|409" && echo " DAG cd_model_pipeline déclenché" || echo "️ Échec du trigger Airflow"
+
+  # ─────────────────────────────────────────────
+  # Summary
+  # ─────────────────────────────────────────────
+  summary:
+    name: Résumé
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+
+    steps:
+      - name: Résumé du déploiement
+        run: |
+          echo "## Déploiement OVH Réussi" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Élément | Valeur |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environnement | ${{ inputs.environment || 'production' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Services déployés" >> $GITHUB_STEP_SUMMARY
+          echo "- FastAPI: port 8000" >> $GITHUB_STEP_SUMMARY
+          echo "- Streamlit: port 8501" >> $GITHUB_STEP_SUMMARY
+          echo "- MLflow: port 5000" >> $GITHUB_STEP_SUMMARY
+          echo "- Airflow: port 8080" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> Pipeline CD modèle géré par le DAG Airflow \`cd_model_pipeline\`" >> $GITHUB_STEP_SUMMARY

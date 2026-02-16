@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oriontrader"
+version = "1.0.0"
+description = "OrionTrader - Forex trading with ML/RL"
+requires-python = ">=3.10"
+authors = [
+    {name = "OrionTrader Team"}
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["airflow*", "fastapi*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["."]
