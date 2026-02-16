@@ -477,7 +477,7 @@ def transform_wikipedia_features(wikipedia_parquets: dict) -> str:
     print("[SILVER/WIKIPEDIA] Transformation Wikipedia...")
 
     if not wikipedia_parquets:
-        print("[SILVER/WIKIPEDIA] ❌ Aucun fichier à transformer")
+        print("[SILVER/WIKIPEDIA] Aucun fichier à transformer")
         return None
 
     all_indices = []

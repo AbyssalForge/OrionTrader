@@ -119,12 +119,12 @@ def scrape_wikipedia_index(index_key: str, config: dict) -> pd.DataFrame:
             df_renamed['ticker'] = df_renamed['ticker'].str.replace(r'\[.*?\]', '', regex=True)
             df_renamed['ticker'] = df_renamed['ticker'].str.split().str[0]  # Garder premier élément
 
-        print(f"[SCRAPING] ✅ {config['index_name']}: {len(df_renamed)} entreprises trouvées")
+        print(f"[SCRAPING] {config['index_name']}: {len(df_renamed)} entreprises trouvées")
 
         return df_renamed
 
     except Exception as e:
-        print(f"[SCRAPING] ❌ Erreur lors du scraping de {config['index_name']}: {e}")
+        print(f"[SCRAPING] Erreur lors du scraping de {config['index_name']}: {e}")
         return pd.DataFrame()
 
 
@@ -148,7 +148,7 @@ def scrape_all_indices() -> Dict[str, pd.DataFrame]:
         time.sleep(1)
 
     total_companies = sum(len(df) for df in results.values())
-    print(f"[SCRAPING] ✅ Total: {total_companies} entreprises scrapées depuis {len(results)} indices")
+    print(f"[SCRAPING] Total: {total_companies} entreprises scrapées depuis {len(results)} indices")
     print("[SCRAPING] ==================== FIN SCRAPING ====================")
 
     return results

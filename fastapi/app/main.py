@@ -24,7 +24,7 @@ from app.routes import market, data, signals, model, auth, monitoring
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="""🚀 **API de trading pour EUR/USD** avec données multi-sources et signaux ML
+    description=""" **API de trading pour EUR/USD** avec données multi-sources et signaux ML
 
 ## Architecture des données
 
@@ -35,7 +35,7 @@ app = FastAPI(
 
 ## Endpoints disponibles
 
-### 📊 Market Data (7 endpoints)
+### Market Data (7 endpoints)
 - `GET /market/latest` - Dernier snapshot de marché disponible
 - `GET /market/ohlcv/m15` - Données OHLCV M15 pour charting
 - `GET /market/ohlcv/latest` - Dernier prix OHLCV disponible
@@ -44,7 +44,7 @@ app = FastAPI(
 - `GET /market/stats` - Statistiques de marché agrégées
 - `GET /health` - Health check et état des tables
 
-### 🎯 Data & Features (6 endpoints)
+### Data & Features (6 endpoints)
 - `GET /data/features/mt5` - Features microstructure MT5 (volatilité, momentum, chandeliers)
 - `GET /data/features/yahoo` - Features macro Yahoo Finance (DXY, VIX, yields, sentiment)
 - `GET /data/features/macro` - Features économiques (PIB, inflation, taux, chômage)
@@ -52,26 +52,26 @@ app = FastAPI(
 - `GET /data/training` - Dataset complet avec JOINs pour ML
 - `GET /data/stats` - Statistiques sur les données disponibles
 
-### 🚨 Trading Signals (5 endpoints)
+### Trading Signals (5 endpoints)
 - `GET /signals/high-confidence` - Signaux haute confiance avec filtres
 - `GET /signals/best` - Top N meilleurs signaux (score + cohérence)
 - `GET /signals/strong-trend` - Signaux avec forte tendance (bullish/bearish)
 - `GET /signals/event-window` - Signaux pendant fenêtres d'événements macro
 - `GET /signals/stats` - Statistiques et distribution des signaux
 
-### 📡 Monitoring (3 endpoints)
+### Monitoring (3 endpoints)
 - `GET /monitoring/metrics` - Métriques Prometheus (scraping, format texte)
 - `GET /monitoring/stats` - Statistiques temps réel en JSON (confiance, latence, cache)
 - `GET /monitoring/drift` - Détection du drift de distribution des prédictions
 
-### 🤖 ML Model (5 endpoints)
+### ML Model (5 endpoints)
 - `POST /model/predict` - Prédiction unique (SHORT/NEUTRAL/LONG)
 - `POST /model/predict/batch` - Prédictions en batch pour backtesting
 - `GET /model/info` - Informations sur le modèle chargé
 - `GET /model/metrics` - Métriques d'entraînement du modèle
 - `POST /model/reload` - Recharge le modèle (après mise à jour)
 
-## 💡 Use cases
+## Use cases
 
 - **Trading automatique**: Utiliser `/signals/high-confidence` pour décisions automatiques
 - **Prédictions ML en temps réel**: `/model/predict` pour obtenir des prédictions SHORT/NEUTRAL/LONG
@@ -81,7 +81,7 @@ app = FastAPI(
 - **Analyse macro**: Données économiques via `/data/features/macro`
 - **Monitoring**: Health check via `/health`, métriques modèle via `/model/metrics`, stats temps réel via `/monitoring/stats`
 
-## 🔑 Paramètres principaux
+## Paramètres principaux
 
 - **Pagination**: `limit` et `offset` sur la plupart des endpoints
 - **Filtrage temporel**: `start_date` et `end_date` au format ISO

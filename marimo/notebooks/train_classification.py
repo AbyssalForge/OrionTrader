@@ -16,9 +16,9 @@ def _():
 @app.cell
 def _(mo):
     mo.md("""
-    # 🤖 OrionTrader - Entraînement Modèle de Classification ML
+    # OrionTrader - Entraînement Modèle de Classification ML
 
-    ## 🎯 Objectif du Notebook
+    ## Objectif du Notebook
 
     Ce notebook construit un **pipeline ML complet** pour prédire les mouvements du marché EUR/USD.
     Le modèle prédit 3 classes de signaux de trading:
@@ -29,7 +29,7 @@ def _(mo):
     | 1 | **NEUTRAL** | Attendre | Pas de mouvement clair → Ne pas trader |
     | 2 | **LONG** | Acheter | Le prix va monter → Ouvrir une position acheteuse |
 
-    ## 📋 Pipeline Complet
+    ## Pipeline Complet
 
     | Étape | Description | Pourquoi c'est important |
     |-------|-------------|--------------------------|
@@ -47,7 +47,7 @@ def _(mo):
     | 11 | **Calibration** | Vérifier si les probabilités sont fiables |
     | 12 | **Optimisation seuils** | Trouver les meilleurs seuils de décision |
 
-    ## ⚠️ Points Clés pour le Trading ML
+    ## ️ Points Clés pour le Trading ML
 
     - **Pas de data leakage** : Le split train/test est temporel (pas aléatoire)
     - **Balanced Accuracy** : Métrique principale car les classes sont déséquilibrées
@@ -115,7 +115,7 @@ def _():
     RANDOM_STATE = 42
     np.random.seed(RANDOM_STATE)
 
-    print("✅ Imports terminés")
+    print(" Imports terminés")
     return (
         CalibratedClassifierCV,
         LabelEncoder,
@@ -152,12 +152,12 @@ def _():
 @app.cell
 def _(mo):
     mo.md("""
-    ## 📊 Étape 1: Chargement des Données depuis PostgreSQL
+    ## Étape 1: Chargement des Données depuis PostgreSQL
 
-    ### 🎯 Objectif
+    ### Objectif
     Récupérer toutes les données nécessaires pour entraîner le modèle ML depuis la base de données.
 
-    ### 🔧 Ce qui est fait
+    ### Ce qui est fait
 
     **1. Connexion sécurisée via Vault**
     ```
@@ -174,11 +174,11 @@ def _(mo):
     | `yahoo_finance_daily` | Indices macro (S&P500, Gold, DXY, VIX) | Journalier |
     | `documents_macro` | Données économiques (PIB, CPI eurozone) | Mensuel/Trimestriel |
 
-    ### 📊 Résultat
+    ### Résultat
     - **`df_raw`** : DataFrame avec toutes les colonnes alignées par timestamp
     - Les données macro journalières/mensuelles sont propagées sur les données 15min (forward fill)
 
-    ### ⚠️ Points d'attention
+    ### ️ Points d'attention
     - La jointure est de type `LEFT JOIN` pour garder toutes les lignes de `market_snapshot_m15`
     - Les valeurs manquantes des données macro seront traitées à l'étape suivante
     """)
@@ -192,7 +192,7 @@ def _(hvac, os, pd, psycopg):
     VAULT_TOKEN = os.getenv('VAULT_TOKEN', '')
     VAULT_MOUNT = os.getenv('VAULT_MOUNT', 'OrionTrader')
 
-    print(f"🔐 Connexion à Vault: {VAULT_ADDR}")
+    print(f" Connexion à Vault: {VAULT_ADDR}")
 
     # Récupération des credentials
     client = hvac.Client(url=VAULT_ADDR, token=VAULT_TOKEN)
@@ -207,17 +207,17 @@ def _(hvac, os, pd, psycopg):
         DB_USER = db_credentials.get('POSTGRES_USER', os.getenv('POSTGRES_USER', 'postgres'))
         DB_PASSWORD = db_credentials.get('POSTGRES_PASSWORD', os.getenv('POSTGRES_PASSWORD', ''))
 
-        print("✅ Credentials récupérés depuis Vault")
+        print(" Credentials récupérés depuis Vault")
     except Exception as e:
-        print(f"⚠️ Erreur Vault: {e}")
+        print(f"️ Erreur Vault: {e}")
         DB_HOST = os.getenv('POSTGRES_HOST', '127.0.0.1')
         DB_PORT = os.getenv('POSTGRES_PORT', '5432')
         DB_NAME = os.getenv('POSTGRES_DB', 'trading_data')
         DB_USER = os.getenv('POSTGRES_USER', 'postgres')
         DB_PASSWORD = os.getenv('POSTGRES_PASSWORD', '')
-        print(f"📋 Fallback sur variables d'environnement")
+        print(f" Fallback sur variables d'environnement")
 
-    print(f"📊 Connexion: {DB_HOST}:{DB_PORT}/{DB_NAME}")
+    print(f" Connexion: {DB_HOST}:{DB_PORT}/{DB_NAME}")
 
     # Connexion PostgreSQL
     conn = psycopg.connect(
@@ -262,8 +262,8 @@ def _(hvac, os, pd, psycopg):
     df_raw = pd.read_sql(query, conn)
     conn.close()
 
-    print(f"✅ {len(df_raw):,} lignes chargées")
-    print(f"📅 Période: {df_raw['time'].min()} → {df_raw['time'].max()}")
+    print(f" {len(df_raw):,} lignes chargées")
+    print(f" Période: {df_raw['time'].min()} → {df_raw['time'].max()}")
     return (df_raw,)
 
 
@@ -276,7 +276,7 @@ def _(df_raw, mo):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🔥 Étape 1.5: Analyse de Corrélation (Heatmap)
+    ## Étape 1.5: Analyse de Corrélation (Heatmap)
 
     **Objectif**: Identifier les variables les plus pertinentes et leurs relations.
 
@@ -308,7 +308,7 @@ def _(df_raw, np):
     # Calculer la matrice de corrélation
     corr_matrix = df_raw[numeric_cols].corr()
 
-    print(f"📊 Matrice de corrélation: {len(numeric_cols)} variables numériques")
+    print(f" Matrice de corrélation: {len(numeric_cols)} variables numériques")
     return (corr_matrix,)
 
 
@@ -349,7 +349,7 @@ def _(corr_matrix, np, plt, sns):
 def _(corr_matrix, mo, pd):
     # Afficher les corrélations les plus fortes (top 20)
     # Transformer la matrice en liste de paires
-    # ⚠️ MARIMO: Utiliser des noms uniques pour éviter conflits avec autres cellules
+    # ️ MARIMO: Utiliser des noms uniques pour éviter conflits avec autres cellules
     corr_pairs = []
     for idx_corr_i in range(len(corr_matrix.columns)):
         for idx_corr_j in range(idx_corr_i + 1, len(corr_matrix.columns)):
@@ -363,7 +363,7 @@ def _(corr_matrix, mo, pd):
     corr_df['Abs_Corr'] = corr_df['Corrélation'].abs()
     corr_df = corr_df.sort_values('Abs_Corr', ascending=False)
 
-    # ⭐ AMÉLIORATION: Séparer corrélations positives et négatives fortes
+    # AMÉLIORATION: Séparer corrélations positives et négatives fortes
     # Seuil pour "forte corrélation"
     CORR_THRESHOLD = 0.5
 
@@ -372,16 +372,16 @@ def _(corr_matrix, mo, pd):
     # Top corrélations NÉGATIVES fortes
     strong_negative = corr_df[corr_df['Corrélation'] <= -CORR_THRESHOLD].head(15)
 
-    print(f"📊 Corrélations fortes (|corr| >= {CORR_THRESHOLD}):")
-    print(f"   ✅ Positives fortes: {len(corr_df[corr_df['Corrélation'] >= CORR_THRESHOLD])}")
-    print(f"   ❌ Négatives fortes: {len(corr_df[corr_df['Corrélation'] <= -CORR_THRESHOLD])}")
+    print(f" Corrélations fortes (|corr| >= {CORR_THRESHOLD}):")
+    print(f" Positives fortes: {len(corr_df[corr_df['Corrélation'] >= CORR_THRESHOLD])}")
+    print(f" Négatives fortes: {len(corr_df[corr_df['Corrélation'] <= -CORR_THRESHOLD])}")
 
     mo.md(f"""
-    ### 🔝 Corrélations les plus fortes (|corr| >= {CORR_THRESHOLD})
+    ### Corrélations les plus fortes (|corr| >= {CORR_THRESHOLD})
 
     **Interprétation:**
-    - 🟢 **Positives**: Variables qui bougent dans le même sens
-    - 🔴 **Négatives**: Variables qui bougent en sens opposé (potentiellement plus intéressantes pour diversification)
+    - **Positives**: Variables qui bougent dans le même sens
+    - **Négatives**: Variables qui bougent en sens opposé (potentiellement plus intéressantes pour diversification)
     """)
     return corr_df, strong_negative, strong_positive
 
@@ -389,7 +389,7 @@ def _(corr_matrix, mo, pd):
 @app.cell
 def _(mo, plt, strong_negative, strong_positive):
 
-    # ⭐ Visualisation des corrélations fortes positives ET négatives
+    # Visualisation des corrélations fortes positives ET négatives
     fig_corr_strong, axes_corr = plt.subplots(1, 2, figsize=(14, 6))
 
     # Corrélations POSITIVES
@@ -400,12 +400,12 @@ def _(mo, plt, strong_negative, strong_positive):
         axes_corr[0].barh(labels_pos[::-1], values_pos[::-1], color=colors_pos[::-1])
         axes_corr[0].set_xlim(0, 1)
         axes_corr[0].set_xlabel('Corrélation')
-        axes_corr[0].set_title('🟢 Top Corrélations POSITIVES', fontweight='bold')
+        axes_corr[0].set_title(' Top Corrélations POSITIVES', fontweight='bold')
         axes_corr[0].axvline(x=0.8, color='darkgreen', linestyle='--', alpha=0.5, label='Très forte (0.8)')
         axes_corr[0].legend()
     else:
         axes_corr[0].text(0.5, 0.5, 'Aucune corrélation positive forte', ha='center', va='center')
-        axes_corr[0].set_title('🟢 Top Corrélations POSITIVES', fontweight='bold')
+        axes_corr[0].set_title(' Top Corrélations POSITIVES', fontweight='bold')
 
     # Corrélations NÉGATIVES
     if len(strong_negative) > 0:
@@ -415,18 +415,18 @@ def _(mo, plt, strong_negative, strong_positive):
         axes_corr[1].barh(labels_neg[::-1], values_neg[::-1], color=colors_neg[::-1])
         axes_corr[1].set_xlim(-1, 0)
         axes_corr[1].set_xlabel('Corrélation')
-        axes_corr[1].set_title('🔴 Top Corrélations NÉGATIVES', fontweight='bold')
+        axes_corr[1].set_title(' Top Corrélations NÉGATIVES', fontweight='bold')
         axes_corr[1].axvline(x=-0.8, color='darkred', linestyle='--', alpha=0.5, label='Très forte (-0.8)')
         axes_corr[1].legend()
     else:
         axes_corr[1].text(0.5, 0.5, 'Aucune corrélation négative forte', ha='center', va='center')
-        axes_corr[1].set_title('🔴 Top Corrélations NÉGATIVES', fontweight='bold')
+        axes_corr[1].set_title(' Top Corrélations NÉGATIVES', fontweight='bold')
 
     plt.tight_layout()
     plt.gca()
 
     mo.md("""
-    **💡 Note importante (Expert):**
+    ** Note importante (Expert):**
     - Ces corrélations sont **linéaires** (Pearson)
     - LightGBM capture aussi les relations **non-linéaires**
     - Ne pas filtrer les features sur cette base seule!
@@ -439,9 +439,9 @@ def _(corr_df, mo):
     # Afficher le top 20 global (pour référence)
     top_corr = corr_df.head(20)[['Variable 1', 'Variable 2', 'Corrélation']].copy()
     top_corr['Corrélation'] = top_corr['Corrélation'].round(3)
-    top_corr['Type'] = top_corr['Corrélation'].apply(lambda x: '🟢 Positive' if x > 0 else '🔴 Négative')
+    top_corr['Type'] = top_corr['Corrélation'].apply(lambda x: ' Positive' if x > 0 else ' Négative')
 
-    mo.md("### 📋 Top 20 Corrélations (valeur absolue)")
+    mo.md("### Top 20 Corrélations (valeur absolue)")
     return (top_corr,)
 
 
@@ -454,22 +454,22 @@ def _(mo, top_corr):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🔧 Étape 2: Feature Engineering (Création d'Indicateurs Techniques)
+    ## Étape 2: Feature Engineering (Création d'Indicateurs Techniques)
 
-    ### 🎯 Objectif
+    ### Objectif
     Transformer les données brutes (OHLCV) en **indicateurs prédictifs** que le modèle ML peut exploiter.
 
-    ### ⚠️ Règle Critique : Éviter le Data Leakage
+    ### ️ Règle Critique : Éviter le Data Leakage
 
     ```
-    ❌ INTERDIT: Utiliser des données futures pour prédire le présent
-    ✅ OBLIGATOIRE: shift(1) sur tous les indicateurs calculés sur 'close'
+    INTERDIT: Utiliser des données futures pour prédire le présent
+    OBLIGATOIRE: shift(1) sur tous les indicateurs calculés sur 'close'
     ```
 
     **Pourquoi ?** Au moment de prédire, on ne connaît pas encore le prix de clôture de la bougie actuelle.
     On utilise donc les valeurs de la bougie précédente.
 
-    ### 📊 Features Créées
+    ### Features Créées
 
     | Catégorie | Features | Description | Signal Trading |
     |-----------|----------|-------------|----------------|
@@ -481,14 +481,14 @@ def _(mo):
     | **Volatilité** | `bb_upper`, `bb_lower`, `bb_position` | Bandes de Bollinger | Position dans le range [0,1] |
     | **Lag Features** | `close_return_lag_1/2/3` | Rendements passés | Capturer l'inertie (momentum) |
 
-    ### 🔬 Pourquoi ces Features ?
+    ### Pourquoi ces Features ?
 
     1. **Moyennes Mobiles** : L'indicateur le plus utilisé par les traders. Croisements MA = signaux classiques.
     2. **RSI** : Indicateur de sur-achat/sur-vente. Fonctionne bien en range, moins en tendance.
     3. **Bollinger Bands** : Mesure la volatilité. Prix touchant les bandes = potentiel retournement.
     4. **Lag Features** : Le marché a de l'inertie. Un mouvement fort tend à continuer (momentum).
 
-    ### 📈 Résultat
+    ### Résultat
     DataFrame `df_fe` enrichi avec **~20 nouvelles features techniques** prêtes pour le ML.
     """)
     return
@@ -502,7 +502,7 @@ def _(df_raw, pd):
     df_fe['hour'] = pd.to_datetime(df_fe['time']).dt.hour
     df_fe['day_of_week'] = pd.to_datetime(df_fe['time']).dt.dayofweek
 
-    # ⚠️ CORRECTION CRITIQUE: shift(1) sur TOUTES les features techniques
+    # ️ CORRECTION CRITIQUE: shift(1) sur TOUTES les features techniques
     # Règle: Une feature doit être calculable AVANT la clôture de la bougie
 
     # Moyennes mobiles
@@ -539,20 +539,20 @@ def _(df_raw, pd):
         df_fe[f'momentum_1h_lag_{lag}'] = df_fe['momentum_1h'].shift(lag)
 
     new_features = len(df_fe.columns) - len(df_raw.columns)
-    print(f"✅ {new_features} nouvelles features créées")
-    print(f"📊 Total: {len(df_fe.columns)} colonnes")
+    print(f" {new_features} nouvelles features créées")
+    print(f" Total: {len(df_fe.columns)} colonnes")
     return (df_fe,)
 
 
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🎯 Étape 3: Création des Labels (Variable Cible)
+    ## Étape 3: Création des Labels (Variable Cible)
 
-    ### 🎯 Objectif
+    ### Objectif
     Définir **ce que le modèle doit prédire** : la direction future du prix.
 
-    ### ❓ Le Problème du Labeling en Trading
+    ### Le Problème du Labeling en Trading
 
     ```
     Question: "Comment savoir si un trade est bon ?"
@@ -563,7 +563,7 @@ def _(mo):
     Solution experte: Ajouter une ZONE NEUTRE pour filtrer le bruit
     ```
 
-    ### ⭐ Méthode Utilisée : Zone Neutre Dynamique
+    ### Méthode Utilisée : Zone Neutre Dynamique
 
     **Principe** : Ne trader que si le mouvement est SIGNIFICATIF par rapport à la volatilité actuelle.
 
@@ -573,14 +573,14 @@ def _(mo):
     | `future_return < -σ × mult` | **SHORT (0)** | Mouvement baissier significatif → Vendre |
     | Sinon | **NEUTRAL (1)** | Bruit de marché → Ne pas trader |
 
-    ### 🔧 Paramètres (Sliders ci-dessous)
+    ### Paramètres (Sliders ci-dessous)
 
     | Paramètre | Description | Recommandation Expert |
     |-----------|-------------|----------------------|
     | **Horizon** | Combien de bougies dans le futur ? | 4-6 bougies M15 = 1h à 1h30 |
     | **Multiplicateur σ** | Taille de la zone neutre | 0.5σ (50% de la volatilité) |
 
-    ### 📊 Exemple Concret
+    ### Exemple Concret
 
     ```
     Volatilité actuelle (σ) = 0.10%
@@ -592,7 +592,7 @@ def _(mo):
     Si future_return = -0.12% → SHORT (dépasse -0.05%)
     ```
 
-    ### ✅ Avantages de cette Méthode
+    ### Avantages de cette Méthode
     - **Adaptative** : Zone neutre plus large en marché volatil, plus étroite en marché calme
     - **Réaliste** : Ne trade pas sur du bruit
     - **Meilleur modèle** : Labels plus propres = meilleure qualité d'apprentissage
@@ -614,7 +614,7 @@ def _(mo):
 def _(df_fe, horizon, volatility_multiplier):
     df_labeled = df_fe.copy()
 
-    # ⭐ AMÉLIORATION EXPERTE: Label design avec zone neutre basée sur volatilité
+    # AMÉLIORATION EXPERTE: Label design avec zone neutre basée sur volatilité
 
     # 1. Calculer le return futur (sur horizon N bougies)
     df_labeled['future_return'] = (
@@ -622,7 +622,7 @@ def _(df_fe, horizon, volatility_multiplier):
     )
 
     # 2. Calculer la volatilité locale (rolling std sur 20 périodes)
-    # ⚠️ CRITIQUE: shift(1) pour éviter le leakage (ne pas inclure le return courant)
+    # ️ CRITIQUE: shift(1) pour éviter le leakage (ne pas inclure le return courant)
     df_labeled['rolling_volatility'] = (
         df_labeled['close'].pct_change().shift(1).rolling(window=20).std() * 100
     )
@@ -631,7 +631,7 @@ def _(df_fe, horizon, volatility_multiplier):
     df_labeled['neutral_threshold'] = df_labeled['rolling_volatility'] * volatility_multiplier.value
 
     # 4. Créer les labels avec zone neutre - VERSION VECTORISÉE (10-20x plus rapide)
-    # ⚠️ CORRECTION: Remplacer apply() par opérations vectorisées
+    # ️ CORRECTION: Remplacer apply() par opérations vectorisées
     df_labeled['label'] = 1  # NEUTRAL par défaut
 
     df_labeled.loc[
@@ -650,10 +650,10 @@ def _(df_fe, horizon, volatility_multiplier):
     # Convertir en int pour éviter problèmes
     df_labeled['label'] = df_labeled['label'].astype(int)
 
-    print(f"✅ Labels créés avec zone neutre dynamique: {len(df_labeled):,} lignes")
-    print(f"📊 Horizon: {horizon.value} bougies ({horizon.value * 15} minutes)")
-    print(f"📊 Multiplicateur volatilité: {volatility_multiplier.value}σ")
-    print(f"\n📊 Distribution des labels:")
+    print(f" Labels créés avec zone neutre dynamique: {len(df_labeled):,} lignes")
+    print(f" Horizon: {horizon.value} bougies ({horizon.value * 15} minutes)")
+    print(f" Multiplicateur volatilité: {volatility_multiplier.value}σ")
+    print(f"\n Distribution des labels:")
     label_counts = df_labeled['label'].value_counts().sort_index()
     label_names = {0: 'SHORT', 1: 'NEUTRAL', 2: 'LONG'}
     for lbl, cnt in label_counts.items():
@@ -662,23 +662,23 @@ def _(df_fe, horizon, volatility_multiplier):
 
     # Stats de la zone neutre
     avg_threshold = df_labeled['neutral_threshold'].mean()
-    print(f"\n📊 Seuil zone neutre moyen: ±{avg_threshold:.4f}%")
+    print(f"\n Seuil zone neutre moyen: ±{avg_threshold:.4f}%")
     return (df_labeled,)
 
 
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🎯 Étape 3.5: Analyse de Corrélation (Exploration uniquement)
+    ## Étape 3.5: Analyse de Corrélation (Exploration uniquement)
 
-    **⚠️ CHANGEMENT IMPORTANT (Recommandation Expert)**
+    **️ CHANGEMENT IMPORTANT (Recommandation Expert)**
 
     **Avant**: On filtrait les features par corrélation
     **Maintenant**: On GARDE TOUTES les features
 
     **Pourquoi ce changement ?**
 
-    ❌ **Problème du filtrage par corrélation pour LightGBM**:
+    **Problème du filtrage par corrélation pour LightGBM**:
     - Pearson correlation mesure uniquement les relations **linéaires**
     - LightGBM capture des relations **non-linéaires** complexes
     - Risque de supprimer les meilleures features (RSI, hour, régimes)
@@ -688,7 +688,7 @@ def _(mo):
     - `RSI`: relation non-linéaire (seuils 30/70)
     - `macro_micro_aligned`: booléen avec impact conditionnel
 
-    ✅ **Nouvelle approche**:
+    **Nouvelle approche**:
     - Garder TOUTES les features numériques
     - Laisser LightGBM faire le tri automatiquement
     - Utiliser SHAP après pour identifier les vraies features importantes
@@ -708,10 +708,10 @@ def _(mo):
 
 @app.cell
 def _(corr_threshold, df_labeled, np, pd):
-    # ⚠️ PROTECTION: Vérifier que df_labeled n'est pas vide
+    # ️ PROTECTION: Vérifier que df_labeled n'est pas vide
     # Note: Pas de early return dans Marimo - utiliser if/else
     if len(df_labeled) == 0:
-        print("❌ ERREUR: df_labeled est vide!")
+        print(" ERREUR: df_labeled est vide!")
         print("   Vérifiez les cellules précédentes (Feature Engineering, Labels)")
         # Valeurs par défaut
         corr_target_df = pd.DataFrame({'Feature': [], 'Corrélation': [], 'Abs_Corr': []})
@@ -725,12 +725,12 @@ def _(corr_threshold, df_labeled, np, pd):
         # Sélectionner les colonnes numériques (exclure time, label, future_return)
         exclude_corr = ['time', 'label', 'future_return', 'label_encoded', 'rolling_volatility', 'neutral_threshold']
         numeric_features = [c for c in df_corr_analysis.columns if c not in exclude_corr]
-        # ⚠️ CORRECTION: Inclure aussi float64 via np.number pour plus de robustesse
+        # ️ CORRECTION: Inclure aussi float64 via np.number pour plus de robustesse
         numeric_features = [c for c in numeric_features if df_corr_analysis[c].dtype in ['int64', 'float64', 'int32', 'float32'] or np.issubdtype(df_corr_analysis[c].dtype, np.number)]
 
         # Debug: Afficher les types de colonnes si aucune feature numérique trouvée
         if len(numeric_features) == 0:
-            print("⚠️ ATTENTION: Aucune feature numérique trouvée!")
+            print("️ ATTENTION: Aucune feature numérique trouvée!")
             print("   Types des colonnes disponibles:")
             for col_debug in df_corr_analysis.columns[:20]:
                 print(f"      - {col_debug}: {df_corr_analysis[col_debug].dtype}")
@@ -753,14 +753,14 @@ def _(corr_threshold, df_labeled, np, pd):
         else:
             corr_target_df['Abs_Corr'] = []
 
-        # ⚠️ CHANGEMENT: On garde TOUTES les features (pas de filtrage)
+        # ️ CHANGEMENT: On garde TOUTES les features (pas de filtrage)
         features_to_keep = numeric_features  # Toutes les features numériques
         threshold_val = corr_threshold.value
 
-        print(f"📊 Analyse de corrélation avec la cible (EXPLORATION uniquement)")
-        print(f"   ✅ Toutes les features gardées: {len(features_to_keep)}")
-        print(f"   📝 Note: Le seuil est affiché pour référence mais n'est PAS utilisé pour filtrer")
-        print(f"   🎯 LightGBM fera le tri automatiquement")
+        print(f" Analyse de corrélation avec la cible (EXPLORATION uniquement)")
+        print(f" Toutes les features gardées: {len(features_to_keep)}")
+        print(f" Note: Le seuil est affiché pour référence mais n'est PAS utilisé pour filtrer")
+        print(f" LightGBM fera le tri automatiquement")
     return corr_target_df, features_to_keep
 
 
@@ -770,11 +770,11 @@ def _(corr_target_df, corr_threshold, mo):
     display_corr = corr_target_df.copy()
     display_corr['Corrélation'] = display_corr['Corrélation'].round(4)
     display_corr['Statut'] = display_corr['Abs_Corr'].apply(
-        lambda x: '✅ Gardée' if x >= corr_threshold.value else '❌ Retirée'
+        lambda x: ' Gardée' if x >= corr_threshold.value else ' Retirée'
     )
     display_corr = display_corr[['Feature', 'Corrélation', 'Statut']]
 
-    mo.md("### 📋 Corrélation des features avec le label")
+    mo.md("### Corrélation des features avec le label")
     return (display_corr,)
 
 
@@ -813,7 +813,7 @@ def _(corr_target_df, corr_threshold, plt):
 @app.cell
 def _(mo):
     mo.md("""
-    ### 🔥 Heatmap avec corrélation Label en première colonne
+    ### Heatmap avec corrélation Label en première colonne
     """)
     return
 
@@ -875,12 +875,12 @@ def _(corr_threshold, df_labeled, plt, sns):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 📋 Étape 4: Préparation des Données pour le Machine Learning
+    ## Étape 4: Préparation des Données pour le Machine Learning
 
-    ### 🎯 Objectif
+    ### Objectif
     Transformer les données brutes en format exploitable par les algorithmes ML.
 
-    ### 🔧 Étapes de Préparation
+    ### Étapes de Préparation
 
     #### 1️⃣ Sélection des Features
 
@@ -910,12 +910,12 @@ def _(mo):
     #### 4️⃣ Split Train/Test Chronologique (80/20)
 
     ```
-    ⚠️ CRITIQUE: PAS de shuffle aléatoire en time-series !
+    ️ CRITIQUE: PAS de shuffle aléatoire en time-series !
 
-    ✅ Correct:  [====== TRAIN 80% ======][== TEST 20% ==]
+    Correct: [====== TRAIN 80% ======][== TEST 20% ==]
                  Données anciennes         Données récentes
 
-    ❌ Faux:     Mélanger aléatoirement (data leakage temporel!)
+    Faux: Mélanger aléatoirement (data leakage temporel!)
     ```
 
     **Pourquoi ?** Si on mélange, le modèle "voit" le futur pendant l'entraînement → Résultats trop optimistes.
@@ -931,7 +931,7 @@ def _(mo):
     Pourquoi ? Toutes les features à la même échelle = convergence plus rapide
     ```
 
-    ### 📊 Résultat
+    ### Résultat
     - **`X_train_scaled`** : Features d'entraînement (80% des données)
     - **`X_test_scaled`** : Features de test (20% des données)
     - **`y_train`**, **`y_test`** : Labels correspondants (0, 1, 2)
@@ -944,7 +944,7 @@ def _(LabelEncoder, StandardScaler, df_labeled, features_to_keep, np, pd):
     # Sélection des features (utiliser celles filtrées par corrélation)
     categorical_cols = ['regime_composite', 'volatility_regime']
 
-    # ✅ CORRECTION: Garder les colonnes catégorielles en format category
+    # CORRECTION: Garder les colonnes catégorielles en format category
     # LightGBM les gérera automatiquement via categorical_feature parameter
     df_ml = df_labeled.copy()
 
@@ -958,20 +958,20 @@ def _(LabelEncoder, StandardScaler, df_labeled, features_to_keep, np, pd):
     feature_cols = [c for c in features_to_keep if c in df_ml.columns]
 
     # Debug: Afficher combien de features passent chaque étape
-    print(f"🔍 Debug feature_cols:")
+    print(f" Debug feature_cols:")
     print(f"   - features_to_keep: {len(features_to_keep)}")
     print(f"   - Après filtrage colonnes existantes: {len(feature_cols)}")
 
-    # ⚠️ CORRECTION: Utiliser np.number pour une détection plus robuste des types numériques
+    # ️ CORRECTION: Utiliser np.number pour une détection plus robuste des types numériques
     feature_cols = [c for c in feature_cols if df_ml[c].dtype in ['int64', 'float64', 'int32', 'float32'] or np.issubdtype(df_ml[c].dtype, np.number)]
     print(f"   - Après filtrage types numériques: {len(feature_cols)}")
 
-    # ⚠️ CORRECTION: Exclure 'close' des features pour éviter duplication
+    # ️ CORRECTION: Exclure 'close' des features pour éviter duplication
     # 'close' sera ajouté séparément pour le backtesting
     feature_cols = [c for c in feature_cols if c != 'close']
     print(f"   - Après exclusion 'close': {len(feature_cols)}")
 
-    # ⚠️ CORRECTION CRITIQUE: Exclure les colonnes avec trop de NaN (> 50%)
+    # ️ CORRECTION CRITIQUE: Exclure les colonnes avec trop de NaN (> 50%)
     # Ces colonnes causent la suppression de toutes les lignes lors du dropna()
     MAX_NAN_PERCENT = 50  # Seuil: exclure si plus de 50% de NaN
     cols_with_too_many_nan = []
@@ -981,7 +981,7 @@ def _(LabelEncoder, StandardScaler, df_labeled, features_to_keep, np, pd):
             cols_with_too_many_nan.append((c_check, nan_pct))
 
     if len(cols_with_too_many_nan) > 0:
-        print(f"\n⚠️ Colonnes exclues (>{MAX_NAN_PERCENT}% NaN):")
+        print(f"\n️ Colonnes exclues (>{MAX_NAN_PERCENT}% NaN):")
         for c_excl, pct_nan in cols_with_too_many_nan:
             print(f"      - {c_excl}: {pct_nan:.1f}% NaN")
         feature_cols = [c for c in feature_cols if c not in [x[0] for x in cols_with_too_many_nan]]
@@ -993,7 +993,7 @@ def _(LabelEncoder, StandardScaler, df_labeled, features_to_keep, np, pd):
             feature_cols.append(col_cat2)
 
     # Garder les colonnes features + label + close (pour backtesting) + time
-    # ⚠️ CORRECTION: S'assurer que 'close' n'est pas dupliquée
+    # ️ CORRECTION: S'assurer que 'close' n'est pas dupliquée
     cols_to_keep_ml = list(dict.fromkeys(feature_cols + ['label', 'close', 'time']))  # Supprime doublons
     df_clean = df_ml[[c for c in cols_to_keep_ml if c in df_ml.columns]].copy()
 
@@ -1002,14 +1002,14 @@ def _(LabelEncoder, StandardScaler, df_labeled, features_to_keep, np, pd):
     df_clean = df_clean.dropna(subset=feature_cols)
     rows_after = len(df_clean)
 
-    print(f"✅ Données nettoyées: {rows_after:,} lignes (supprimé {rows_before - rows_after:,} lignes avec NaN)")
-    print(f"📊 Features sélectionnées (après filtrage corrélation): {len(feature_cols)}")
+    print(f" Données nettoyées: {rows_after:,} lignes (supprimé {rows_before - rows_after:,} lignes avec NaN)")
+    print(f" Features sélectionnées (après filtrage corrélation): {len(feature_cols)}")
 
-    # ⚠️ DIAGNOSTIC: Vérifier que feature_cols n'est pas vide
+    # ️ DIAGNOSTIC: Vérifier que feature_cols n'est pas vide
     has_error = False
     if len(feature_cols) == 0:
         print("\n" + "="*60)
-        print("❌ ERREUR: Aucune feature sélectionnée!")
+        print(" ERREUR: Aucune feature sélectionnée!")
         print("="*60)
         print("   Vérifiez que features_to_keep contient des colonnes valides")
         print(f"   features_to_keep reçu: {len(features_to_keep)} colonnes")
@@ -1024,10 +1024,10 @@ def _(LabelEncoder, StandardScaler, df_labeled, features_to_keep, np, pd):
         X = pd.DataFrame()  # DataFrame vide
     y = df_clean['label'].values if len(df_clean) > 0 else np.array([])
 
-    # ⚠️ DIAGNOSTIC: Vérifier que X n'est pas vide
+    # ️ DIAGNOSTIC: Vérifier que X n'est pas vide
     if len(X) == 0 and not has_error:
         print("\n" + "="*60)
-        print("❌ ERREUR: DataFrame X est vide après nettoyage!")
+        print(" ERREUR: DataFrame X est vide après nettoyage!")
         print("="*60)
         print("   Toutes les lignes ont été supprimées (probablement trop de NaN)")
         if len(feature_cols) > 0 and len(df_ml) > 0:
@@ -1043,11 +1043,11 @@ def _(LabelEncoder, StandardScaler, df_labeled, features_to_keep, np, pd):
     label_encoder = LabelEncoder()
     label_encoder.classes_ = np.array([0, 1, 2])
     label_mapping = {0: 'SHORT', 1: 'NEUTRAL', 2: 'LONG'}
-    print(f"🏷️ Mapping labels: {label_mapping}")
+    print(f"️ Mapping labels: {label_mapping}")
 
     # Vérification finale - aucun NaN ne doit rester
     nan_count = X.isna().sum().sum() if len(X) > 0 else 0
-    print(f"🔍 Vérification NaN dans X: {nan_count}")
+    print(f" Vérification NaN dans X: {nan_count}")
 
     # Split chronologique (80/20)
     split_idx = int(len(X) * 0.8) if len(X) > 0 else 0
@@ -1061,30 +1061,30 @@ def _(LabelEncoder, StandardScaler, df_labeled, features_to_keep, np, pd):
 
     # Affichage stats
     if len(X) > 0:
-        print(f"\n📊 Train: {len(X_train):,} ({len(X_train)/len(X)*100:.1f}%)")
-        print(f"📊 Test: {len(X_test):,} ({len(X_test)/len(X)*100:.1f}%)")
+        print(f"\n Train: {len(X_train):,} ({len(X_train)/len(X)*100:.1f}%)")
+        print(f" Test: {len(X_test):,} ({len(X_test)/len(X)*100:.1f}%)")
     else:
-        print(f"\n📊 Train: {len(X_train):,}")
-        print(f"📊 Test: {len(X_test):,}")
+        print(f"\n Train: {len(X_train):,}")
+        print(f" Test: {len(X_test):,}")
 
-    # ⚠️ CHANGEMENT IMPORTANT: PAS de scaling pour LightGBM
+    # ️ CHANGEMENT IMPORTANT: PAS de scaling pour LightGBM
     X_train_scaled = X_train  # DataFrame, PAS .values
     X_test_scaled = X_test    # DataFrame, PAS .values
 
     # Créer scaler factice pour compatibilité (non utilisé)
     scaler = StandardScaler()
 
-    # ✅ Préparer les noms de colonnes catégorielles pour LightGBM
+    # Préparer les noms de colonnes catégorielles pour LightGBM
     categorical_feature_names = [c_cat for c_cat in categorical_cols if c_cat in feature_cols]
 
     if not has_error:
-        print("✅ Features préparées (SANS scaling pour LightGBM)")
-        print(f"📊 Features catégorielles pour LightGBM: {categorical_feature_names}")
-        print(f"📊 Types des colonnes catégorielles:")
+        print(" Features préparées (SANS scaling pour LightGBM)")
+        print(f" Features catégorielles pour LightGBM: {categorical_feature_names}")
+        print(f" Types des colonnes catégorielles:")
         for col_type in categorical_feature_names:
             print(f"   - {col_type}: {X_train_scaled[col_type].dtype}")
     else:
-        print("\n⚠️ Le pipeline ne peut pas continuer avec des données vides.")
+        print("\n️ Le pipeline ne peut pas continuer avec des données vides.")
         print("   Vérifiez les cellules précédentes pour identifier le problème.")
     return (
         X_test_scaled,
@@ -1100,22 +1100,22 @@ def _(LabelEncoder, StandardScaler, df_labeled, features_to_keep, np, pd):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🤖 Étape 5: Entraînement du Modèle LightGBM
+    ## Étape 5: Entraînement du Modèle LightGBM
 
-    ### 🎯 Objectif
+    ### Objectif
     Entraîner le modèle principal de classification avec LightGBM (Light Gradient Boosting Machine).
 
-    ### ❓ Pourquoi LightGBM ?
+    ### Pourquoi LightGBM ?
 
     | Critère | LightGBM | RandomForest | Neural Network |
     |---------|----------|--------------|----------------|
-    | **Données tabulaires** | ⭐⭐⭐ Excellent | ⭐⭐ Bon | ⭐ Moyen |
-    | **Vitesse** | ⭐⭐⭐ Très rapide | ⭐⭐ Moyen | ⭐ Lent |
-    | **Variables catégorielles** | ⭐⭐⭐ Support natif | ⭐⭐ One-hot encoding | ⭐ Embedding |
-    | **Overfitting** | ⭐⭐⭐ Early stopping | ⭐⭐ Bagging | ⭐ Complexe |
-    | **Interprétabilité** | ⭐⭐⭐ SHAP compatible | ⭐⭐ Feature importance | ⭐ Boîte noire |
+    | **Données tabulaires** | Excellent | Bon | Moyen |
+    | **Vitesse** | Très rapide | Moyen | Lent |
+    | **Variables catégorielles** | Support natif | One-hot encoding | Embedding |
+    | **Overfitting** | Early stopping | Bagging | Complexe |
+    | **Interprétabilité** | SHAP compatible | Feature importance | Boîte noire |
 
-    ### 🔧 Configuration du Modèle
+    ### Configuration du Modèle
 
     ```python
     lgbm_params = {
@@ -1142,7 +1142,7 @@ def _(mo):
     → Si pas d'amélioration sur 50 itérations → on arrête
     ```
 
-    ### 📊 Métriques Calculées
+    ### Métriques Calculées
 
     | Métrique | Description | Objectif Trading |
     |----------|-------------|------------------|
@@ -1150,7 +1150,7 @@ def _(mo):
     | **Macro F1** | F1 moyen des 3 classes | > 0.35 |
     | **Overfitting** | Différence train/test | < 0.10 (10%) |
 
-    ### 📈 Résultat
+    ### Résultat
     - `lgbm_model` : Modèle LightGBM entraîné
     - `results_df` : DataFrame avec toutes les métriques
     - `y_pred_test` : Prédictions sur le test set
@@ -1177,12 +1177,12 @@ def _(
     y_train,
 ):
 
-    # ⭐ AMÉLIORATION EXPERTE: LightGBM uniquement avec early stopping
+    # AMÉLIORATION EXPERTE: LightGBM uniquement avec early stopping
 
-    # ⚠️ PROTECTION: Vérifier que les données ne sont pas vides
+    # ️ PROTECTION: Vérifier que les données ne sont pas vides
     # Note: Pas de early return dans Marimo - utiliser if/else
     if len(X_train_scaled) == 0 or len(y_train) == 0:
-        print("❌ ERREUR: Données d'entraînement vides!")
+        print(" ERREUR: Données d'entraînement vides!")
         print("   X_train_scaled est vide. Vérifiez les cellules précédentes.")
         print("   Le pipeline ne peut pas continuer sans données.")
         # Valeurs par défaut
@@ -1190,19 +1190,19 @@ def _(
         results_df = pd.DataFrame()
         y_pred_test = np.array([])
     else:
-        print("🚀 Entraînement LightGBM avec early stopping...\n")
+        print(" Entraînement LightGBM avec early stopping...\n")
 
-        # ⚠️ Split temporel pur (SANS stratify, SANS shuffle)
+        # ️ Split temporel pur (SANS stratify, SANS shuffle)
         # CRITIQUE: stratify casse la structure temporelle → INTERDIT en time-series
         split_val_idx = int(len(X_train_scaled) * 0.8)
-        # ✅ CORRECTION: Utiliser .iloc[] pour garder le DataFrame (pas .values)
+        # CORRECTION: Utiliser .iloc[] pour garder le DataFrame (pas .values)
         X_train_fit = X_train_scaled.iloc[:split_val_idx]
         X_val_fit = X_train_scaled.iloc[split_val_idx:]
         y_train_fit = y_train[:split_val_idx]
         y_val_fit = y_train[split_val_idx:]
 
-        print(f"   📊 Train fit: {len(X_train_fit):,} lignes")
-        print(f"   📊 Validation: {len(X_val_fit):,} lignes")
+        print(f" Train fit: {len(X_train_fit):,} lignes")
+        print(f" Validation: {len(X_val_fit):,} lignes")
 
         # Paramètres LightGBM optimisés pour time-series
         lgbm_params = {
@@ -1221,10 +1221,10 @@ def _(
             'random_state': RANDOM_STATE
         }
 
-        # ✅ CORRECTION: Créer datasets LightGBM avec categorical_feature
+        # CORRECTION: Créer datasets LightGBM avec categorical_feature
         # Utiliser les NOMS des colonnes catégorielles (pas les indices) quand on passe un DataFrame
-        print(f"📊 Features catégorielles détectées: {categorical_feature_names}")
-        print(f"📊 Type X_train_fit: {type(X_train_fit)}")
+        print(f" Features catégorielles détectées: {categorical_feature_names}")
+        print(f" Type X_train_fit: {type(X_train_fit)}")
 
         train_data = lgb.Dataset(
             X_train_fit,
@@ -1259,14 +1259,14 @@ def _(
 
         train_time = (datetime.now() - t_start).total_seconds()
 
-        print(f"\n✅ Entraînement terminé en {train_time:.1f}s")
-        print(f"📊 Best iteration: {lgbm_model.best_iteration}")
+        print(f"\n Entraînement terminé en {train_time:.1f}s")
+        print(f" Best iteration: {lgbm_model.best_iteration}")
 
         # Prédictions
         y_pred_train = lgbm_model.predict(X_train_scaled).argmax(axis=1)
         y_pred_test = lgbm_model.predict(X_test_scaled).argmax(axis=1)
 
-        # ⭐ MÉTRIQUES RECOMMANDÉES PAR EXPERT
+        # MÉTRIQUES RECOMMANDÉES PAR EXPERT
         # Train metrics
         train_accuracy = accuracy_score(y_train, y_pred_train)
         train_balanced_acc = balanced_accuracy_score(y_train, y_pred_train)
@@ -1284,7 +1284,7 @@ def _(
         overfit_macro_f1 = train_macro_f1 - test_macro_f1
 
         print("\n" + "="*70)
-        print("📊 MÉTRIQUES (Train vs Test)")
+        print(" MÉTRIQUES (Train vs Test)")
         print("="*70)
         print(f"{'Metric':<25} {'Train':>15} {'Test':>15} {'Overfit':>10}")
         print("-"*70)
@@ -1319,7 +1319,7 @@ def _(mo, results_df):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🔬 Étape 5bis: Comparaison de Plusieurs Modèles
+    ## Étape 5bis: Comparaison de Plusieurs Modèles
 
     **Objectif**: Comparer les performances de différents algorithmes ML.
 
@@ -1358,7 +1358,7 @@ def _(
     y_train,
 ):
 
-    print("🔬 Comparaison de Modèles ML")
+    print(" Comparaison de Modèles ML")
     print("="*70)
 
     # Liste pour stocker tous les résultats
@@ -1376,7 +1376,7 @@ def _(
             'Recall': lgbm_row['Recall'],
             'Time (s)': lgbm_row['Time (s)'],
         })
-        print(f"✅ LightGBM: Bal.Acc={lgbm_row['Balanced Accuracy']:.4f}, F1={lgbm_row['Macro F1']:.4f}")
+        print(f" LightGBM: Bal.Acc={lgbm_row['Balanced Accuracy']:.4f}, F1={lgbm_row['Macro F1']:.4f}")
 
     # Convertir en array numpy pour les modèles sklearn (gérer catégorielles)
     # Les colonnes catégorielles doivent être converties en codes numériques
@@ -1396,11 +1396,11 @@ def _(
 
     X_train_np = X_train_numeric.values
     X_test_np = X_test_numeric.values
-    print(f"📊 Données converties: {X_train_np.shape[1]} features numériques")
+    print(f" Données converties: {X_train_np.shape[1]} features numériques")
 
     # 2. XGBoost
     try:
-        print("\n🔄 Entraînement XGBoost...")
+        print("\n Entraînement XGBoost...")
         t_start_xgb = datetime.now()
 
         xgb_model = XGBClassifier(
@@ -1432,12 +1432,12 @@ def _(
             'Recall': round(recall_score(y_test, y_pred_xgb, average='macro', zero_division=0), 4),
             'Time (s)': round(xgb_time, 2),
         })
-        print(f"✅ XGBoost: Bal.Acc={xgb_bal_acc:.4f}, F1={xgb_f1:.4f} ({xgb_time:.1f}s)")
+        print(f" XGBoost: Bal.Acc={xgb_bal_acc:.4f}, F1={xgb_f1:.4f} ({xgb_time:.1f}s)")
     except ImportError:
-        print("⚠️ XGBoost non installé - pip install xgboost")
+        print("️ XGBoost non installé - pip install xgboost")
 
     # 3. RandomForest
-    print("\n🔄 Entraînement RandomForest...")
+    print("\n Entraînement RandomForest...")
     t_start_rf = datetime.now()
 
     rf_model = RandomForestClassifier(
@@ -1465,10 +1465,10 @@ def _(
         'Recall': round(recall_score(y_test, y_pred_rf, average='macro', zero_division=0), 4),
         'Time (s)': round(rf_time, 2),
     })
-    print(f"✅ RandomForest: Bal.Acc={rf_bal_acc:.4f}, F1={rf_f1:.4f} ({rf_time:.1f}s)")
+    print(f" RandomForest: Bal.Acc={rf_bal_acc:.4f}, F1={rf_f1:.4f} ({rf_time:.1f}s)")
 
     # 4. LogisticRegression (baseline)
-    print("\n🔄 Entraînement LogisticRegression...")
+    print("\n Entraînement LogisticRegression...")
     t_start_lr = datetime.now()
 
     lr_model = LogisticRegression(
@@ -1493,17 +1493,17 @@ def _(
         'Recall': round(recall_score(y_test, y_pred_lr, average='macro', zero_division=0), 4),
         'Time (s)': round(lr_time, 2),
     })
-    print(f"✅ LogisticRegression: Bal.Acc={lr_bal_acc:.4f}, F1={lr_f1:.4f} ({lr_time:.1f}s)")
+    print(f" LogisticRegression: Bal.Acc={lr_bal_acc:.4f}, F1={lr_f1:.4f} ({lr_time:.1f}s)")
 
     # Créer le DataFrame de comparaison
     comparison_df = pd.DataFrame(all_models_results)
     comparison_df = comparison_df.sort_values('Balanced Accuracy', ascending=False).reset_index(drop=True)
 
     print("\n" + "="*70)
-    print("📊 CLASSEMENT PAR BALANCED ACCURACY:")
+    print(" CLASSEMENT PAR BALANCED ACCURACY:")
     print("="*70)
     for idx_rank, row_rank in comparison_df.iterrows():
-        medal = "🥇" if idx_rank == 0 else "🥈" if idx_rank == 1 else "🥉" if idx_rank == 2 else "  "
+        medal = "" if idx_rank == 0 else "" if idx_rank == 1 else "" if idx_rank == 2 else " "
         print(f"{medal} {row_rank['Model']:<20} Bal.Acc: {row_rank['Balanced Accuracy']:.4f}  F1: {row_rank['Macro F1']:.4f}")
     return (comparison_df,)
 
@@ -1517,7 +1517,7 @@ def _(comparison_df, mo):
 @app.cell
 def _(comparison_df, mo, plt):
 
-    mo.md("### 📊 Visualisation Comparaison des Modèles")
+    mo.md("### Visualisation Comparaison des Modèles")
 
     fig_compare, axes_compare = plt.subplots(1, 2, figsize=(14, 5))
 
@@ -1547,7 +1547,7 @@ def _(comparison_df, mo):
     best_model_compare = comparison_df.iloc[0]
 
     mo.md(f"""
-    ### 🏆 Résultat de la Comparaison
+    ### Résultat de la Comparaison
 
     **Meilleur modèle**: **{best_model_compare['Model']}**
 
@@ -1572,7 +1572,7 @@ def _(comparison_df, mo):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🏆 Étape 6: Évaluation Détaillée du Modèle LightGBM
+    ## Étape 6: Évaluation Détaillée du Modèle LightGBM
 
     **Objectif**: Analyser en détail les performances du modèle par classe.
 
@@ -1610,7 +1610,7 @@ def _(mo, results_df):
     best_model_name = best_row['Model']
 
     mo.md(f"""
-    ### 🥇 Modèle: **{best_model_name}**
+    ### Modèle: **{best_model_name}**
 
     | Métrique | Valeur | Objectif Expert |
     |----------|--------|-----------------|
@@ -1621,9 +1621,9 @@ def _(mo, results_df):
     | Best Iteration | {best_row['Best Iteration']} | - |
 
     **Interprétation**:
-    - ✅ Balanced Accuracy mesure la performance équilibrée sur les 3 classes
-    - ✅ Macro F1 est la métrique principale (non biaisée par classe majoritaire)
-    - ✅ Overfitting < 0.10 indique un bon équilibre train/test
+    - Balanced Accuracy mesure la performance équilibrée sur les 3 classes
+    - Macro F1 est la métrique principale (non biaisée par classe majoritaire)
+    - Overfitting < 0.10 indique un bon équilibre train/test
     """)
     return
 
@@ -1633,7 +1633,7 @@ def _(classification_report, y_pred_test, y_test):
     # Labels numériques: 0=SHORT, 1=NEUTRAL, 2=LONG
     label_names_report = ['SHORT (0)', 'NEUTRAL (1)', 'LONG (2)']
 
-    print("📋 Classification Report:\n")
+    print(" Classification Report:\n")
     print(classification_report(y_test, y_pred_test, target_names=label_names_report))
     return
 
@@ -1645,7 +1645,7 @@ def _(confusion_matrix, mo, pd, y_pred_test, y_test):
     cm = confusion_matrix(y_test, y_pred_test)
     cm_df = pd.DataFrame(cm, index=label_names_cm, columns=label_names_cm)
 
-    mo.md("### 📊 Matrice de Confusion")
+    mo.md("### Matrice de Confusion")
     return (cm_df,)
 
 
@@ -1658,9 +1658,9 @@ def _(cm_df, mo):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🔧 Étape 7: Optimisation des Hyperparamètres avec Optuna
+    ## Étape 7: Optimisation des Hyperparamètres avec Optuna
 
-    **🎯 Objectif**: Trouver automatiquement les meilleurs hyperparamètres pour LightGBM.
+    ** Objectif**: Trouver automatiquement les meilleurs hyperparamètres pour LightGBM.
 
     ### Optuna vs GridSearchCV
 
@@ -1668,7 +1668,7 @@ def _(mo):
     |---------|--------------|--------|
     | **Stratégie** | Grille exhaustive | Bayésien (intelligent) |
     | **Efficacité** | Teste tout | Concentre sur les zones prometteuses |
-    | **Pruning** | ❌ Non | ✅ Arrête les mauvais essais tôt |
+    | **Pruning** | Non | Arrête les mauvais essais tôt |
     | **Temps** | Long (n^k combinaisons) | Rapide (guidé par les résultats) |
     | **Flexibilité** | Fixe | Adaptatif |
 
@@ -1733,7 +1733,7 @@ def _(
     # OPTIMISATION OPTUNA
     # ========================================================================
 
-    print("🔍 Optimisation Optuna des hyperparamètres LightGBM...")
+    print(" Optimisation Optuna des hyperparamètres LightGBM...")
     print(f"   Nombre de trials: {n_trials_slider.value}")
     print(f"   Timeout: {optuna_timeout_slider.value}s")
     print("")
@@ -1813,10 +1813,10 @@ def _(
         show_progress_bar=True
     )
 
-    print(f"\n✅ Optimisation terminée!")
+    print(f"\n Optimisation terminée!")
     print(f"   Trials complétés: {len(study.trials)}")
     print(f"   Meilleur score (Balanced Accuracy): {study.best_value:.4f}")
-    print(f"\n📋 Meilleurs hyperparamètres:")
+    print(f"\n Meilleurs hyperparamètres:")
     for opt_pname, opt_pval in study.best_params.items():
         print(f"   - {opt_pname}: {opt_pval}")
 
@@ -1840,7 +1840,7 @@ def _(
         callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)]
     )
 
-    print(f"\n🎯 Modèle Optuna entraîné (best iteration: {lgbm_model_optuna.best_iteration})")
+    print(f"\n Modèle Optuna entraîné (best iteration: {lgbm_model_optuna.best_iteration})")
     return lgbm_model_optuna, study, best_params_optuna
 
 
@@ -1861,7 +1861,7 @@ def _(
     # COMPARAISON: Modèle par défaut vs Modèle Optuna
     # ========================================================================
 
-    print("📊 Comparaison des modèles...")
+    print(" Comparaison des modèles...")
     print("="*70)
 
     # Prédictions modèle par défaut
@@ -1892,7 +1892,7 @@ def _(
         'Best Iteration': [lgbm_model.best_iteration, lgbm_model_optuna.best_iteration]
     })
 
-    print("\n📋 Tableau de comparaison:")
+    print("\n Tableau de comparaison:")
     print(optuna_comparison_df.to_string(index=False))
 
     # Déterminer le gagnant
@@ -1912,7 +1912,7 @@ def _(
             winner = "Défaut"
             winner_reason = "Performances similaires, Défaut a moins d'overfitting"
 
-    print(f"\n🏆 Gagnant: {winner}")
+    print(f"\n Gagnant: {winner}")
     print(f"   Raison: {winner_reason}")
 
     mo.ui.table(optuna_comparison_df)
@@ -1934,7 +1934,7 @@ def _(
         best_model_optimized = lgbm_model_optuna
         best_params = best_params_optuna
         model_source = "Optuna"
-        print("✅ Modèle Optuna sélectionné pour la suite du pipeline")
+        print(" Modèle Optuna sélectionné pour la suite du pipeline")
     else:
         best_model_optimized = lgbm_model
         best_params = {
@@ -1947,11 +1947,11 @@ def _(
             'bagging_fraction': 0.8,
         }
         model_source = "Défaut"
-        print("✅ Modèle par défaut sélectionné (Optuna n'a pas amélioré)")
+        print(" Modèle par défaut sélectionné (Optuna n'a pas amélioré)")
 
-    print(f"\n📊 Modèle sélectionné: LightGBM ({model_source})")
+    print(f"\n Modèle sélectionné: LightGBM ({model_source})")
     print(f"   Best iteration: {best_model_optimized.best_iteration}")
-    print(f"\n📋 Paramètres du modèle sélectionné:")
+    print(f"\n Paramètres du modèle sélectionné:")
     for sel_pname, sel_pval in best_params.items():
         if sel_pname not in ['objective', 'num_class', 'metric', 'verbosity', 'random_state', 'boosting_type']:
             print(f"   - {sel_pname}: {sel_pval}")
@@ -1962,7 +1962,7 @@ def _(
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🔧 Étape 8: Récapitulatif avant Sauvegarde
+    ## Étape 8: Récapitulatif avant Sauvegarde
 
     Le modèle LightGBM est prêt. Continuez avec les étapes suivantes:
     - **Backtesting** (Étape 9)
@@ -1970,7 +1970,7 @@ def _(mo):
     - **Calibration** (Étape 11)
     - **Optimisation des seuils** (Étape 12)
 
-    👉 **La sauvegarde MLflow se trouve à la toute fin du notebook** (après la conclusion)
+    **La sauvegarde MLflow se trouve à la toute fin du notebook** (après la conclusion)
     """)
     return
 
@@ -1978,20 +1978,20 @@ def _(mo):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 📈 Étape 9: Backtesting avec Probability-Based Trading
+    ## Étape 9: Backtesting avec Probability-Based Trading
 
-    **🔥 AMÉLIORATION CRITIQUE**: Utilisation des probabilités au lieu de argmax()
+    ** AMÉLIORATION CRITIQUE**: Utilisation des probabilités au lieu de argmax()
 
     **Ancien système (argmax)**:
-    - ❌ Prend toujours la classe avec la plus haute probabilité
-    - ❌ Trade même avec une confiance de 34% (très faible!)
-    - ❌ Overtrading garanti
+    - Prend toujours la classe avec la plus haute probabilité
+    - Trade même avec une confiance de 34% (très faible!)
+    - Overtrading garanti
 
     **Nouveau système (probability thresholds)**:
-    - ✅ Trade LONG uniquement si `P(LONG) > seuil` (ex: 0.60)
-    - ✅ Trade SHORT uniquement si `P(SHORT) > seuil` (ex: 0.60)
-    - ✅ Sinon → NEUTRAL (pas de trade)
-    - ✅ Seuils asymétriques possibles (LONG ≠ SHORT)
+    - Trade LONG uniquement si `P(LONG) > seuil` (ex: 0.60)
+    - Trade SHORT uniquement si `P(SHORT) > seuil` (ex: 0.60)
+    - Sinon → NEUTRAL (pas de trade)
+    - Seuils asymétriques possibles (LONG ≠ SHORT)
 
     **Objectif**: Simuler l'utilisation du modèle sur des données historiques pour évaluer la rentabilité.
 
@@ -2010,7 +2010,7 @@ def _(mo):
        - **Sharpe Ratio**: Rendement ajusté au risque
        - **Max Drawdown**: Perte maximale depuis un pic
 
-    **⚠️ Impact attendu**:
+    **️ Impact attendu**:
     - Moins de trades mais plus précis
     - Sharpe Ratio ↑
     - Drawdown ↓
@@ -2053,7 +2053,7 @@ def _(
     # Utiliser df_backtest qui a déjà été créé avec le bon split et contient 'close'
     df_test = df_backtest.copy()
 
-    # 🔥 AMÉLIORATION CRITIQUE: Probability-based trading
+    # AMÉLIORATION CRITIQUE: Probability-based trading
     # Prédictions du modèle optimisé (LightGBM retourne des probas)
     y_pred_backtest_proba = best_model_optimized.predict(X_test_scaled)
 
@@ -2064,7 +2064,7 @@ def _(
     proba_long = y_pred_backtest_proba[:, 2]    # P(LONG)
 
     # Appliquer les seuils de confiance
-    # ⚠️ MARIMO: Utiliser nom unique pour éviter conflit
+    # ️ MARIMO: Utiliser nom unique pour éviter conflit
     y_pred_backtest = []
     for idx_bt in range(len(y_pred_backtest_proba)):
         if proba_long[idx_bt] > long_threshold.value:
@@ -2076,7 +2076,7 @@ def _(
 
     y_pred_backtest = np.array(y_pred_backtest)
 
-    print(f"🎯 Seuils appliqués: LONG > {long_threshold.value:.2f}, SHORT > {short_threshold.value:.2f}")
+    print(f" Seuils appliqués: LONG > {long_threshold.value:.2f}, SHORT > {short_threshold.value:.2f}")
 
     # Ajouter les prédictions et probabilités au DataFrame
     df_test = df_test.reset_index(drop=True)
@@ -2086,7 +2086,7 @@ def _(
     df_test['proba_long'] = proba_long
     df_test['max_proba'] = y_pred_backtest_proba.max(axis=1)
 
-    # ⚠️ CORRECTION CRITIQUE: Aligner le return avec l'horizon du label
+    # ️ CORRECTION CRITIQUE: Aligner le return avec l'horizon du label
     # Avant: pct_change(1) = 1 bougie (15min)
     # Maintenant: pct_change(horizon) = N bougies (ex: 4 = 1h)
     # COHÉRENCE: on trade sur le même horizon qu'on entraîne
@@ -2094,9 +2094,9 @@ def _(
         df_test['close'].pct_change(periods=horizon.value).shift(-horizon.value) * 100
     )
 
-    print(f"⚠️ Backtest aligné sur horizon={horizon.value} bougies ({horizon.value * 15}min)")
+    print(f"️ Backtest aligné sur horizon={horizon.value} bougies ({horizon.value * 15}min)")
 
-    # ✅ CORRECTION: Ajouter les coûts de transaction
+    # CORRECTION: Ajouter les coûts de transaction
     # Pour EUR/USD:
     # - Spread typique: 1-2 pips = 0.0001-0.0002 = 0.01-0.02%
     # - Slippage moyen: ~0.5 pip = 0.005%
@@ -2146,21 +2146,21 @@ def _(
     backtest_max_dd = df_test['drawdown'].min()
 
     print("="*60)
-    print("📊 RÉSULTATS DU BACKTESTING")
+    print(" RÉSULTATS DU BACKTESTING")
     print("="*60)
-    print(f"💰 Coûts de transaction inclus: {TRANSACTION_COST_PCT}% par trade")
-    print(f"\n📈 Performance globale (NET après frais):")
+    print(f" Coûts de transaction inclus: {TRANSACTION_COST_PCT}% par trade")
+    print(f"\n Performance globale (NET après frais):")
     print(f"   Total Return: {total_return:.2f}%")
     print(f"   Avg Return/Trade: {avg_return_per_trade:.4f}%")
     print(f"   Sharpe Ratio (annualisé): {backtest_sharpe:.2f}")
     print(f"   Max Drawdown: {backtest_max_dd:.2f}%")
 
-    print(f"\n🎯 Statistiques des trades:")
+    print(f"\n Statistiques des trades:")
     print(f"   Total trades: {total_trades}")
     print(f"   Trades gagnants: {winning_trades} ({backtest_win_rate:.1f}%)")
     print(f"   Trades perdants: {losing_trades}")
 
-    print(f"\n📊 Répartition des prédictions:")
+    print(f"\n Répartition des prédictions:")
     pred_counts = df_test['prediction'].value_counts().sort_index()
     pred_labels_map = {0: 'SHORT', 1: 'NEUTRAL', 2: 'LONG'}
     for pred_label, pred_cnt in pred_counts.items():
@@ -2168,7 +2168,7 @@ def _(
         pct_pred = pred_cnt/len(df_test)*100
         print(f"   {label_name} ({pred_label}): {pred_cnt} ({pct_pred:.1f}%)")
 
-    # 🔥 ANALYSE CRITIQUE: Performance par classe (LONG vs SHORT)
+    # ANALYSE CRITIQUE: Performance par classe (LONG vs SHORT)
     print(f"\n⚡ Analyse par type de trade (CRITIQUE pour trading réel):")
 
     # LONG trades
@@ -2203,14 +2203,14 @@ def _(
 
     # Analyse du % NEUTRAL
     neutral_pct = (pred_counts.get(1, 0) / len(df_test)) * 100
-    print(f"\n💡 Analyse zone neutre:")
+    print(f"\n Analyse zone neutre:")
     print(f"   % NEUTRAL: {neutral_pct:.1f}%")
     if neutral_pct < 50:
-        print(f"   ⚠️ WARNING: Trop agressif! Recommandé: 55-70% NEUTRAL")
+        print(f" ️ WARNING: Trop agressif! Recommandé: 55-70% NEUTRAL")
     elif neutral_pct > 70:
-        print(f"   ⚠️ WARNING: Trop conservateur! Baisser les seuils")
+        print(f" ️ WARNING: Trop conservateur! Baisser les seuils")
     else:
-        print(f"   ✅ OK: Bon équilibre signal/bruit")
+        print(f" OK: Bon équilibre signal/bruit")
     return (df_test,)
 
 
@@ -2219,7 +2219,7 @@ def _(df_test, mo, pd):
     # Créer un résumé pour affichage
     df_trades_summary = df_test[df_test['prediction'] != 1]  # Exclure NEUTRAL
 
-    # ⚠️ CORRECTION: Protéger contre division par zéro
+    # ️ CORRECTION: Protéger contre division par zéro
     def safe_sharpe(df_trades):
         if len(df_trades) == 0:
             return "N/A"
@@ -2252,7 +2252,7 @@ def _(df_test, mo, pd):
 def _(mo):
     # Courbe de P&L cumulé
     mo.md("""
-    ### 📉 Courbe de P&L Cumulé
+    ### Courbe de P&L Cumulé
     """)
     return
 
@@ -2284,12 +2284,12 @@ def _(df_test, plt):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🔍 Étape 10: SHAP Analysis (Interprétabilité du Modèle)
+    ## Étape 10: SHAP Analysis (Interprétabilité du Modèle)
 
-    ### 🎯 Objectif
+    ### Objectif
     Comprendre **POURQUOI** le modèle prend ses décisions → Essentiel pour la confiance et le debugging.
 
-    ### ❓ Qu'est-ce que SHAP ?
+    ### Qu'est-ce que SHAP ?
 
     **SHAP** = SHapley Additive exPlanations (basé sur la théorie des jeux)
 
@@ -2305,7 +2305,7 @@ def _(mo):
               = 0.50 (prédiction finale)
     ```
 
-    ### ⭐ Pourquoi c'est OBLIGATOIRE ?
+    ### Pourquoi c'est OBLIGATOIRE ?
 
     | Raison | Description |
     |--------|-------------|
@@ -2314,7 +2314,7 @@ def _(mo):
     | **Robustesse** | Si le modèle repose sur 1 seule feature → fragile |
     | **Trading** | Les features importantes doivent avoir du sens économique |
 
-    ### 📊 Ce qui est Affiché
+    ### Ce qui est Affiché
 
     | Graphique | Description | Ce qu'il faut regarder |
     |-----------|-------------|------------------------|
@@ -2323,12 +2323,12 @@ def _(mo):
     | **Summary SHORT** | Features importantes pour prédire SHORT | Doit être différent de LONG |
     | **LightGBM Importance** | Gain vs Split count natif | Confirme les résultats SHAP |
 
-    ### 🔴 Red Flags à Surveiller
+    ### Red Flags à Surveiller
 
-    - ❌ Une feature domine à >50% → Probablement du data leakage
-    - ❌ `future_return` dans le top → BUG CRITIQUE (triche!)
-    - ❌ Features non-intuitives dans le top → Investiguer
-    - ✅ Mix de momentum, tendance, volatilité → Modèle équilibré
+    - Une feature domine à >50% → Probablement du data leakage
+    - `future_return` dans le top → BUG CRITIQUE (triche!)
+    - Features non-intuitives dans le top → Investiguer
+    - Mix de momentum, tendance, volatilité → Modèle équilibré
     """)
     return
 
@@ -2336,8 +2336,8 @@ def _(mo):
 @app.cell
 def _(X_test_scaled, best_model_optimized, pd, shap):
 
-    # ⭐ SHAP Analysis - Obligatoire selon expert
-    print("🔍 Calcul des valeurs SHAP...")
+    # SHAP Analysis - Obligatoire selon expert
+    print(" Calcul des valeurs SHAP...")
     print("   (peut prendre quelques secondes)")
 
     # Créer l'explainer TreeExplainer (optimisé pour LightGBM)
@@ -2350,20 +2350,20 @@ def _(X_test_scaled, best_model_optimized, pd, shap):
 
     shap_values = explainer.shap_values(X_shap_sample)
 
-    print(f"✅ SHAP calculé sur {sample_size} échantillons")
+    print(f" SHAP calculé sur {sample_size} échantillons")
 
     # Créer un DataFrame pour l'importance moyenne
     feature_names = X_test_scaled.columns.tolist()
     n_features = len(feature_names)
 
     # Debug: vérifier la structure des shap_values
-    print(f"📊 Type shap_values: {type(shap_values)}")
+    print(f" Type shap_values: {type(shap_values)}")
     if isinstance(shap_values, list):
-        print(f"📊 Nombre de classes: {len(shap_values)}")
-        print(f"📊 Shape par classe: {[sv.shape for sv in shap_values]}")
+        print(f" Nombre de classes: {len(shap_values)}")
+        print(f" Shape par classe: {[sv.shape for sv in shap_values]}")
     else:
-        print(f"📊 Shape shap_values: {shap_values.shape}")
-    print(f"📊 Nombre de features: {n_features}")
+        print(f" Shape shap_values: {shap_values.shape}")
+    print(f" Nombre de features: {n_features}")
 
     # Gérer différents formats de shap_values
     import numpy as np_shap
@@ -2380,17 +2380,17 @@ def _(X_test_scaled, best_model_optimized, pd, shap):
         shap_long = np_shap.abs(shap_values[:, :, 2]).mean(axis=0)
     else:
         # Format inconnu - créer des arrays vides
-        print(f"⚠️ Format SHAP inattendu, utilisation de valeurs par défaut")
+        print(f"️ Format SHAP inattendu, utilisation de valeurs par défaut")
         shap_short = np_shap.zeros(n_features)
         shap_neutral = np_shap.zeros(n_features)
         shap_long = np_shap.zeros(n_features)
 
     # Vérifier que les longueurs correspondent
-    print(f"📊 Longueurs: features={n_features}, SHORT={len(shap_short)}, NEUTRAL={len(shap_neutral)}, LONG={len(shap_long)}")
+    print(f" Longueurs: features={n_features}, SHORT={len(shap_short)}, NEUTRAL={len(shap_neutral)}, LONG={len(shap_long)}")
 
     # S'assurer que toutes les arrays ont la bonne longueur
     if len(shap_short) != n_features:
-        print(f"⚠️ Ajustement: shap arrays ont {len(shap_short)} éléments, features en a {n_features}")
+        print(f"️ Ajustement: shap arrays ont {len(shap_short)} éléments, features en a {n_features}")
         # Prendre le minimum pour éviter l'erreur
         min_len = min(n_features, len(shap_short), len(shap_neutral), len(shap_long))
         feature_names = feature_names[:min_len]
@@ -2412,7 +2412,7 @@ def _(X_test_scaled, best_model_optimized, pd, shap):
     )
     mean_shap_importance = mean_shap_importance.sort_values('SHAP_Total', ascending=False)
 
-    print("\n📊 Top 15 Features par importance SHAP:")
+    print("\n Top 15 Features par importance SHAP:")
     for _, row_shap in mean_shap_importance.head(15).iterrows():
         print(f"   {row_shap['Feature']}: {row_shap['SHAP_Total']:.4f} (S:{row_shap['SHAP_SHORT']:.3f} N:{row_shap['SHAP_NEUTRAL']:.3f} L:{row_shap['SHAP_LONG']:.3f})")
     return X_shap_sample, mean_shap_importance, shap_values
@@ -2421,7 +2421,7 @@ def _(X_test_scaled, best_model_optimized, pd, shap):
 @app.cell
 def _(X_shap_sample, mo, np, plt, shap, shap_values):
 
-    mo.md("### 📊 SHAP Summary Plot - Global (Toutes Classes)")
+    mo.md("### SHAP Summary Plot - Global (Toutes Classes)")
 
     # Summary plot global - pour multiclass, passer la liste directement
     fig_shap_global, ax_shap_global = plt.subplots(figsize=(12, 8))
@@ -2467,7 +2467,7 @@ def _(X_shap_sample, mo, np, plt, shap, shap_values):
 @app.cell
 def _(X_shap_sample, mo, np, plt, shap_values):
 
-    mo.md("### 📈 SHAP Summary Plot - Classe LONG")
+    mo.md("### SHAP Summary Plot - Classe LONG")
 
     # Summary plot pour LONG (classe 2)
     fig_shap_long, ax_shap_long = plt.subplots(figsize=(12, 8))
@@ -2508,7 +2508,7 @@ def _(X_shap_sample, mo, np, plt, shap_values):
 @app.cell
 def _(X_shap_sample, mo, np, plt, shap_values):
 
-    mo.md("### 📉 SHAP Summary Plot - Classe SHORT")
+    mo.md("### SHAP Summary Plot - Classe SHORT")
 
     # Summary plot pour SHORT (classe 0)
     fig_shap_short, ax_shap_short = plt.subplots(figsize=(12, 8))
@@ -2549,7 +2549,7 @@ def _(X_shap_sample, mo, np, plt, shap_values):
 @app.cell
 def _(best_model_optimized, mo, pd, plt):
 
-    mo.md("### 🌲 LightGBM Feature Importance (Gain vs Split)")
+    mo.md("### LightGBM Feature Importance (Gain vs Split)")
 
     # Feature importance native LightGBM
     feature_importance_gain = best_model_optimized.feature_importance(importance_type='gain')
@@ -2597,33 +2597,33 @@ def _(lgb_importance_df, mo):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🎯 Étape 11: Calibration des Probabilités
+    ## Étape 11: Calibration des Probabilités
 
-    ### 🎯 Objectif
+    ### Objectif
     Vérifier et corriger les probabilités du modèle pour qu'elles soient **fiables**.
 
-    ### ❓ Qu'est-ce que la Calibration ?
+    ### Qu'est-ce que la Calibration ?
 
     ```
     Question: Quand le modèle dit "70% de chance de LONG", est-ce vraiment 70% ?
 
     Modèle bien calibré:
-    - Parmi tous les cas où P(LONG) = 70%, environ 70% sont vraiment des LONG ✅
+    - Parmi tous les cas où P(LONG) = 70%, environ 70% sont vraiment des LONG
 
     Modèle mal calibré:
-    - Parmi tous les cas où P(LONG) = 70%, seulement 50% sont des LONG ❌
+    - Parmi tous les cas où P(LONG) = 70%, seulement 50% sont des LONG
     → Le modèle est trop confiant !
     ```
 
-    ### 📊 Métrique: ECE (Expected Calibration Error)
+    ### Métrique: ECE (Expected Calibration Error)
 
     | ECE | Interprétation |
     |-----|----------------|
-    | < 0.05 | ✅ Bien calibré |
-    | 0.05 - 0.10 | ⚠️ Acceptable |
-    | > 0.10 | ❌ Mal calibré → Ajuster les seuils |
+    | < 0.05 | Bien calibré |
+    | 0.05 - 0.10 | ️ Acceptable |
+    | > 0.10 | Mal calibré → Ajuster les seuils |
 
-    ### 📈 Courbe de Calibration (Reliability Diagram)
+    ### Courbe de Calibration (Reliability Diagram)
 
     ```
     Axe X: Probabilité prédite (0% à 100%)
@@ -2642,7 +2642,7 @@ def _(mo):
     | **Mal calibré** | Seuils instables, trop de trades, faux signaux |
     | **Bien calibré** | Seuils fiables, moins de trades mais meilleure qualité |
 
-    ### 🔧 Solutions si mal calibré
+    ### Solutions si mal calibré
     1. **Isotonic Regression** : Ajuste les probas de façon non-linéaire
     2. **Platt Scaling** : Ajuste avec une sigmoïde
     3. **Ajuster les seuils** : Utiliser des seuils plus conservateurs
@@ -2662,13 +2662,13 @@ def _(
     y_train,
 ):
 
-    # ⭐ Calibration Analysis
+    # Calibration Analysis
 
     # 1. Obtenir les probabilités brutes du modèle
     proba_train_raw = best_model_optimized.predict(X_train_scaled)
     proba_test_raw = best_model_optimized.predict(X_test_scaled)
 
-    print("🎯 Analyse de la calibration des probabilités...")
+    print(" Analyse de la calibration des probabilités...")
 
     # 2. Pour chaque classe, calculer la courbe de calibration
     fig_calib, axes_calib = plt.subplots(1, 3, figsize=(15, 5))
@@ -2676,7 +2676,7 @@ def _(
 
     calibration_metrics = []
 
-    # ⚠️ MARIMO: Utiliser nom unique pour éviter conflit
+    # ️ MARIMO: Utiliser nom unique pour éviter conflit
     for idx_calib, class_name in enumerate(class_names_calib):
         # Créer les labels binaires pour cette classe
         y_train_binary = (y_train == idx_calib).astype(int)
@@ -2697,7 +2697,7 @@ def _(
         calibration_metrics.append({
             'Class': class_name,
             'ECE': ece,
-            'Status': '✅ Bien calibré' if ece < 0.05 else '⚠️ Mal calibré'
+            'Status': ' Bien calibré' if ece < 0.05 else '️ Mal calibré'
         })
 
         # Plot
@@ -2714,7 +2714,7 @@ def _(
 
     # Afficher métriques
     calib_df = pd.DataFrame(calibration_metrics)
-    print("\n📊 Métriques de Calibration (ECE - Expected Calibration Error):")
+    print("\n Métriques de Calibration (ECE - Expected Calibration Error):")
     print("   ECE < 0.05 = Bien calibré")
     print("   ECE > 0.10 = Mal calibré")
     for _, row_calib in calib_df.iterrows():
@@ -2731,12 +2731,12 @@ def _(calib_df, mo):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 🔧 Étape 11bis: Correction de la Calibration (Platt Scaling / Isotonic)
+    ## Étape 11bis: Correction de la Calibration (Platt Scaling / Isotonic)
 
-    ### 🎯 Objectif
+    ### Objectif
     Corriger les probabilités du modèle pour qu'elles reflètent mieux la réalité.
 
-    ### ❓ Pourquoi Calibrer ?
+    ### Pourquoi Calibrer ?
 
     Vos ECE actuels montrent une **surconfiance** du modèle :
     - SHORT: 6.7% d'erreur
@@ -2745,14 +2745,14 @@ def _(mo):
 
     Quand le modèle prédit 70% de confiance pour LONG, la réalité est plutôt ~60-65%.
 
-    ### 🔧 Méthodes de Calibration
+    ### Méthodes de Calibration
 
     | Méthode | Description | Quand l'utiliser |
     |---------|-------------|------------------|
     | **Platt Scaling** | Régression logistique sur les probas | Dataset petit, calibration simple |
     | **Isotonic Regression** | Régression non-paramétrique | Dataset grand (>1000), plus flexible |
 
-    ### ⚠️ Important
+    ### ️ Important
     - La calibration est faite sur le **validation set** (pas le test set)
     - Les probabilités calibrées seront utilisées pour le backtesting
     - Le modèle original est conservé, on ajoute juste une couche de calibration
@@ -2798,7 +2798,7 @@ def _(
     # CALIBRATION DES PROBABILITÉS
     # ========================================================================
 
-    print(f"🔧 Calibration des probabilités avec méthode: {calibration_method.value}")
+    print(f" Calibration des probabilités avec méthode: {calibration_method.value}")
     print("="*70)
 
     # Probabilités originales
@@ -2823,7 +2823,7 @@ def _(
         y_calib = y_train[split_calib:]
         proba_calib = best_model_optimized.predict(X_calib)
 
-        print(f"📊 Données de calibration: {len(X_calib)} échantillons")
+        print(f" Données de calibration: {len(X_calib)} échantillons")
 
         n_classes = 3
         calibrators = []
@@ -2860,7 +2860,7 @@ def _(
         proba_test_calibrated = proba_test_calibrated / proba_test_calibrated.sum(axis=1, keepdims=True)
         calibration_applied = True
 
-        print("✅ Calibration appliquée!")
+        print(" Calibration appliquée!")
 
     # Calculer ECE avant/après
     class_names_ece = ['SHORT', 'NEUTRAL', 'LONG']
@@ -2896,7 +2896,7 @@ def _(
 
     ece_df = pd.DataFrame(ece_comparison)
 
-    print("\n📊 Comparaison ECE (avant/après calibration):")
+    print("\n Comparaison ECE (avant/après calibration):")
     print(ece_df.to_string(index=False))
 
     # Visualisation
@@ -2946,12 +2946,12 @@ def _(ece_df, mo):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 📊 Étape 12: Optimisation des Seuils de Trading (Grid Search)
+    ## Étape 12: Optimisation des Seuils de Trading (Grid Search)
 
-    ### 🎯 Objectif
+    ### Objectif
     Trouver les **meilleurs seuils de probabilité** pour décider quand trader.
 
-    ### ❓ Pourquoi Optimiser les Seuils ?
+    ### Pourquoi Optimiser les Seuils ?
 
     ```
     Seuil par défaut: 0.50 (argmax)
@@ -2965,7 +2965,7 @@ def _(mo):
     → Moins de trades mais meilleure qualité
     ```
 
-    ### 🔧 Grille de Recherche
+    ### Grille de Recherche
 
     | Paramètre | Valeurs Testées |
     |-----------|-----------------|
@@ -2974,7 +2974,7 @@ def _(mo):
 
     **Total: 25 combinaisons testées**
 
-    ### 📊 Métriques d'Optimisation
+    ### Métriques d'Optimisation
 
     | Métrique | Description | Objectif |
     |----------|-------------|----------|
@@ -2997,7 +2997,7 @@ def _(mo):
     - Seuil SHORT: 0.65 (plus conservateur)
     ```
 
-    ### ⚠️ Note Importante
+    ### ️ Note Importante
     L'optimisation sur le test set peut causer de l'**overfitting aux données test**.
     En production, utiliser **walk-forward validation** (optimiser sur une fenêtre glissante).
     """)
@@ -3006,15 +3006,15 @@ def _(mo):
 
 @app.cell
 def _(df_backtest, horizon, np, pd, proba_test_calibrated, calibration_applied):
-    # ⭐ Grid Search pour optimiser les seuils
+    # Grid Search pour optimiser les seuils
     # Utilise les probabilités calibrées si disponibles
 
     proba_for_grid = proba_test_calibrated  # Utiliser les probas calibrées
 
     if calibration_applied:
-        print("🔍 Optimisation des seuils de trading (avec probabilités calibrées)...")
+        print(" Optimisation des seuils de trading (avec probabilités calibrées)...")
     else:
-        print("🔍 Optimisation des seuils de trading (probabilités originales)...")
+        print(" Optimisation des seuils de trading (probabilités originales)...")
 
     # Grille de seuils à tester
     long_thresholds_grid = [0.50, 0.55, 0.60, 0.65, 0.70]
@@ -3035,7 +3035,7 @@ def _(df_backtest, horizon, np, pd, proba_test_calibrated, calibration_applied):
     for long_th in long_thresholds_grid:
         for short_th in short_thresholds_grid:
             # Appliquer les seuils
-            # ⚠️ MARIMO: Utiliser nom unique pour éviter conflit
+            # ️ MARIMO: Utiliser nom unique pour éviter conflit
             predictions = []
             for idx_grid in range(len(proba_for_grid)):
                 if proba_for_grid[idx_grid, 2] > long_th:
@@ -3088,13 +3088,13 @@ def _(df_backtest, horizon, np, pd, proba_test_calibrated, calibration_applied):
     # Créer DataFrame des résultats
     grid_df = pd.DataFrame(grid_results)
 
-    # ⚠️ CORRECTION: Gérer le cas où aucune combinaison n'a assez de trades
+    # ️ CORRECTION: Gérer le cas où aucune combinaison n'a assez de trades
     if len(grid_df) > 0:
         grid_df = grid_df.sort_values('Sharpe', ascending=False)
-        print(f"\n✅ {len(grid_results)} combinaisons testées")
-        print("\n🏆 Top 10 combinaisons par Sharpe Ratio:")
+        print(f"\n {len(grid_results)} combinaisons testées")
+        print("\n Top 10 combinaisons par Sharpe Ratio:")
     else:
-        print("\n⚠️ Aucune combinaison n'a généré assez de trades (>10)")
+        print("\n️ Aucune combinaison n'a généré assez de trades (>10)")
         print("   Essayez de baisser les seuils de probabilité")
     return (grid_df,)
 
@@ -3110,16 +3110,16 @@ def _(grid_df, mo):
         top_grid['Max_DD'] = top_grid['Max_DD'].round(2)
         mo.ui.table(top_grid)
     else:
-        mo.md("⚠️ Aucun résultat à afficher - pas assez de trades")
+        mo.md("️ Aucun résultat à afficher - pas assez de trades")
     return
 
 
 @app.cell
 def _(grid_df, mo, plt, sns):
 
-    # ⚠️ CORRECTION: Vérifier que grid_df n'est pas vide
+    # ️ CORRECTION: Vérifier que grid_df n'est pas vide
     if len(grid_df) == 0:
-        mo.md("⚠️ Pas de données pour la heatmap")
+        mo.md("️ Pas de données pour la heatmap")
     else:
         # Heatmap des Sharpe Ratios
         fig_heat_sharpe, ax_heat_sharpe = plt.subplots(figsize=(8, 6))
@@ -3153,10 +3153,10 @@ def _(grid_df, mo, plt, sns):
 @app.cell
 def _(grid_df, mo):
     # Recommandation automatique
-    # ⚠️ CORRECTION: Vérifier que grid_df n'est pas vide
+    # ️ CORRECTION: Vérifier que grid_df n'est pas vide
     if len(grid_df) == 0:
         mo.md("""
-        ### ⚠️ Pas de Configuration Optimale
+        ### ️ Pas de Configuration Optimale
 
         Aucune combinaison de seuils n'a généré assez de trades.
         Essayez de baisser les seuils de probabilité dans les sliders ci-dessus.
@@ -3165,7 +3165,7 @@ def _(grid_df, mo):
         best_config = grid_df.iloc[0]
 
         mo.md(f"""
-        ### 🏆 Configuration Optimale Recommandée
+        ### Configuration Optimale Recommandée
 
         | Paramètre | Valeur |
         |-----------|--------|
@@ -3177,7 +3177,7 @@ def _(grid_df, mo):
         | Trades | {int(best_config['Trades'])} |
         | Max Drawdown | {best_config['Max_DD']:.2f}% |
 
-        **💡 Conseil**: Si les seuils sont asymétriques (LONG ≠ SHORT), c'est normal!
+        ** Conseil**: Si les seuils sont asymétriques (LONG ≠ SHORT), c'est normal!
         SHORT est souvent plus bruité et nécessite un seuil plus strict.
         """)
     return
@@ -3187,16 +3187,16 @@ def _(grid_df, mo):
 def _(mo):
     mo.md("""
     ---
-    ## 💾 Étape 13: Sauvegarde sur MLflow
+    ## Étape 13: Sauvegarde sur MLflow
 
-    ### 🎯 Objectif
+    ### Objectif
     Sauvegarder le modèle, les métriques et les graphiques sur MLflow pour:
     - **Versioning**: Garder un historique des modèles
     - **Comparaison**: Comparer facilement différents runs
     - **Déploiement**: Charger le modèle en production
     - **Reproductibilité**: Retrouver les paramètres exacts
 
-    ### 📦 Ce qui est sauvegardé
+    ### Ce qui est sauvegardé
     - **Modèle**: LightGBM (format natif)
     - **Paramètres**: horizon, volatility_multiplier, seuils, etc.
     - **Métriques**: balanced_accuracy, macro_f1, Sharpe, win_rate, etc.
@@ -3253,12 +3253,12 @@ def _(
     mlflow_run_id = None
     mlflow_error = None
 
-    print("💾 Sauvegarde MLflow en cours...")
+    print(" Sauvegarde MLflow en cours...")
 
     try:
-        # ⚠️ CORRECTION 1: Fermer tout run actif (sécurité Marimo)
+        # ️ CORRECTION 1: Fermer tout run actif (sécurité Marimo)
         if mlflow.active_run():
-            print("⚠️ Run MLflow actif détecté → fermeture")
+            print("️ Run MLflow actif détecté → fermeture")
             mlflow.end_run()
 
         # Configuration MLflow
@@ -3270,7 +3270,7 @@ def _(
 
             with mlflow.start_run(run_name=run_name) as run:
                 mlflow_run_id = run.info.run_id
-                print(f"✅ [MLFLOW] Run ID: {mlflow_run_id}")
+                print(f" [MLFLOW] Run ID: {mlflow_run_id}")
 
                 # === PARAMETRES ===
                 print("[MLFLOW] Log des paramètres...")
@@ -3343,9 +3343,9 @@ def _(
                     plt.savefig(corr_path, dpi=100, bbox_inches='tight')
                     plt.close(fig_corr_mlf)
                     mlflow.log_artifact(corr_path, "figures")
-                    print("   ✅ Heatmap sauvegardée")
+                    print(" Heatmap sauvegardée")
                 except Exception as e:
-                    print(f"   ⚠️ Erreur heatmap: {e}")
+                    print(f" ️ Erreur heatmap: {e}")
 
                 # 2. Comparaison des modeles
                 print("[MLFLOW] Sauvegarde comparaison modeles...")
@@ -3367,9 +3367,9 @@ def _(
                     plt.savefig(comp_path, dpi=100, bbox_inches='tight')
                     plt.close(fig_comp_mlf)
                     mlflow.log_artifact(comp_path, "figures")
-                    print("   ✅ Comparaison sauvegardée")
+                    print(" Comparaison sauvegardée")
                 except Exception as e:
-                    print(f"   ⚠️ Erreur comparaison: {e}")
+                    print(f" ️ Erreur comparaison: {e}")
 
                 # 3. Matrice de confusion
                 print("[MLFLOW] Sauvegarde matrice de confusion...")
@@ -3387,9 +3387,9 @@ def _(
                     plt.savefig(cm_path, dpi=100, bbox_inches='tight')
                     plt.close(fig_cm_mlf)
                     mlflow.log_artifact(cm_path, "figures")
-                    print("   ✅ Matrice de confusion sauvegardée")
+                    print(" Matrice de confusion sauvegardée")
                 except Exception as e:
-                    print(f"   ⚠️ Erreur matrice confusion: {e}")
+                    print(f" ️ Erreur matrice confusion: {e}")
 
                 # 4. Feature Importance LightGBM
                 print("[MLFLOW] Sauvegarde feature importance...")
@@ -3420,9 +3420,9 @@ def _(
                     plt.savefig(fi_path, dpi=100, bbox_inches='tight')
                     plt.close(fig_fi_mlf)
                     mlflow.log_artifact(fi_path, "figures")
-                    print("   ✅ Feature importance sauvegardée")
+                    print(" Feature importance sauvegardée")
                 except Exception as e:
-                    print(f"   ⚠️ Erreur feature importance: {e}")
+                    print(f" ️ Erreur feature importance: {e}")
 
                 # 5. SHAP Global
                 print("[MLFLOW] Sauvegarde SHAP plots...")
@@ -3492,15 +3492,15 @@ def _(
                         plt.savefig(shap_short_path, dpi=100, bbox_inches='tight')
                         plt.close(fig_shap_short_mlf)
                         mlflow.log_artifact(shap_short_path, "figures/shap")
-                        print("   ✅ SHAP plots sauvegardés")
+                        print(" SHAP plots sauvegardés")
                     else:
-                        print(f"   ⚠️ SHAP values ne sont pas au bon format")
+                        print(f" ️ SHAP values ne sont pas au bon format")
                         if shap_values_list is None:
                             print(f"   Format non géré: {type(shap_values)}")
                         else:
                             print(f"   Nombre de classes: {len(shap_values_list)} (attendu: >= 3)")
                 except Exception as e:
-                    print(f"   ⚠️ Erreur SHAP: {e}")
+                    print(f" ️ Erreur SHAP: {e}")
                     import traceback
                     traceback.print_exc()
 
@@ -3532,9 +3532,9 @@ def _(
                     plt.savefig(calib_path, dpi=100, bbox_inches='tight')
                     plt.close(fig_calib_mlf)
                     mlflow.log_artifact(calib_path, "figures")
-                    print("   ✅ Calibration sauvegardée")
+                    print(" Calibration sauvegardée")
                 except Exception as e:
-                    print(f"   ⚠️ Erreur calibration: {e}")
+                    print(f" ️ Erreur calibration: {e}")
 
                 # 7. Courbe P&L
                 print("[MLFLOW] Sauvegarde courbe P&L...")
@@ -3563,9 +3563,9 @@ def _(
                         plt.savefig(pnl_path, dpi=100, bbox_inches='tight')
                         plt.close(fig_pnl_mlf)
                         mlflow.log_artifact(pnl_path, "figures")
-                        print("   ✅ Courbe P&L sauvegardée")
+                        print(" Courbe P&L sauvegardée")
                 except Exception as e:
-                    print(f"   ⚠️ Erreur courbe P&L: {e}")
+                    print(f" ️ Erreur courbe P&L: {e}")
 
                 # === SAUVEGARDER LE MODELE ===
                 print("[MLFLOW] Sauvegarde du modele LightGBM...")
@@ -3579,7 +3579,7 @@ def _(
 
                     # Logger comme artifact
                     mlflow.log_artifact(model_path, "model")
-                    print("   ✅ Modèle sauvegardé comme artifact")
+                    print(" Modèle sauvegardé comme artifact")
 
                     # Aussi essayer la méthode MLflow native avec enregistrement dans le Model Registry
                     try:
@@ -3589,21 +3589,21 @@ def _(
                             artifact_path="model_native",
                             registered_model_name=model_name
                         )
-                        print(f"   ✅ Modèle enregistré dans Model Registry: {model_name}")
+                        print(f" Modèle enregistré dans Model Registry: {model_name}")
                         print(f"   ℹ️ Alias 'production' géré par le DAG CD (cd_model_pipeline)")
                     except Exception as e2:
-                        print(f"   ⚠️ Enregistrement Model Registry échoué: {e2}")
+                        print(f" ️ Enregistrement Model Registry échoué: {e2}")
                         # Si l'enregistrement échoue, essayer sans le registered_model_name
                         try:
                             mlflow.lightgbm.log_model(
                                 best_model_optimized,
                                 artifact_path="model_native"
                             )
-                            print("   ✅ Modèle natif sauvegardé (sans registry)")
+                            print(" Modèle natif sauvegardé (sans registry)")
                         except Exception as e3:
-                            print(f"   ⚠️ Méthode native complètement échouée: {e3}")
+                            print(f" ️ Méthode native complètement échouée: {e3}")
                 except Exception as e:
-                    print(f"   ⚠️ Erreur sauvegarde modèle: {e}")
+                    print(f" ️ Erreur sauvegarde modèle: {e}")
                     import traceback
                     traceback.print_exc()
 
@@ -3627,12 +3627,12 @@ def _(
                         mean_shap_importance.to_csv(shap_imp_path, index=False)
                         mlflow.log_artifact(shap_imp_path)
 
-                    print("   ✅ Artefacts supplémentaires sauvegardés")
+                    print(" Artefacts supplémentaires sauvegardés")
                 except Exception as e:
-                    print(f"   ⚠️ Erreur artefacts: {e}")
+                    print(f" ️ Erreur artefacts: {e}")
 
                 print("\n" + "="*60)
-                print("✅ SAUVEGARDE MLFLOW TERMINEE!")
+                print(" SAUVEGARDE MLFLOW TERMINEE!")
                 print("="*60)
                 print(f"   Run ID: {mlflow_run_id}")
                 print(f"   Experience: {experiment_name_input.value}")
@@ -3642,7 +3642,7 @@ def _(
     except Exception as e:
         mlflow_error = str(e)
         print("\n" + "="*60)
-        print("❌ ERREUR MLFLOW")
+        print(" ERREUR MLFLOW")
         print("="*60)
         print(f"Type: {type(e).__name__}")
         print(f"Message: {mlflow_error}")
@@ -3661,7 +3661,7 @@ def _(
 def _(experiment_name_input, mlflow_run_id, mlflow_uri_input, mo):
     if mlflow_run_id:
         mo.md(f"""
-        ### ✅ Sauvegarde Terminee!
+        ### Sauvegarde Terminee!
 
         | Info | Valeur |
         |------|--------|
@@ -3670,11 +3670,11 @@ def _(experiment_name_input, mlflow_run_id, mlflow_uri_input, mo):
         | **URI** | {mlflow_uri_input.value} |
 
         **Artefacts sauvegardes:**
-        - 🤖 Modele LightGBM
-        - 📊 Metriques (balanced_accuracy, macro_f1, Sharpe, etc.)
-        - 📈 Graphiques (correlation, confusion matrix, SHAP, calibration, P&L)
-        - 📝 Liste des features
-        - 📋 Comparaison des modeles
+        - Modele LightGBM
+        - Metriques (balanced_accuracy, macro_f1, Sharpe, etc.)
+        - Graphiques (correlation, confusion matrix, SHAP, calibration, P&L)
+        - Liste des features
+        - Comparaison des modeles
 
         **Pour charger le modele en production:**
         ```python
@@ -3690,26 +3690,26 @@ def _(experiment_name_input, mlflow_run_id, mlflow_uri_input, mo):
 def _(mo):
     mo.md("""
     ---
-    ## 📝 Conclusion & Prochaines Étapes
+    ## Conclusion & Prochaines Étapes
 
     ### Résumé du pipeline (Production-Ready)
-    1. ✅ **Données chargées** depuis PostgreSQL (MT5 + Yahoo + Macro)
-    2. ✅ **Features créées** avec shift(1) (MA, RSI, Bollinger, momentum)
-    3. ✅ **Labels définis** avec zone neutre dynamique (volatilité)
-    4. ✅ **Modèle LightGBM** avec early stopping
-    5. ✅ **Probability-based trading** (pas argmax)
-    6. ✅ **SHAP Analysis** pour interprétabilité
-    7. ✅ **Calibration analysée**
-    8. ✅ **Seuils optimisés** via grid search
-    9. ✅ **Sauvegarde MLflow** (modèle + métriques + graphiques)
+    1. **Données chargées** depuis PostgreSQL (MT5 + Yahoo + Macro)
+    2. **Features créées** avec shift(1) (MA, RSI, Bollinger, momentum)
+    3. **Labels définis** avec zone neutre dynamique (volatilité)
+    4. **Modèle LightGBM** avec early stopping
+    5. **Probability-based trading** (pas argmax)
+    6. **SHAP Analysis** pour interprétabilité
+    7. **Calibration analysée**
+    8. **Seuils optimisés** via grid search
+    9. **Sauvegarde MLflow** (modèle + métriques + graphiques)
 
-    ### ⚠️ Avertissements
+    ### ️ Avertissements
     - Les performances passées ne garantissent pas les performances futures
     - Le modèle doit être ré-entraîné régulièrement (drift des données)
     - Toujours utiliser un **stop-loss** en trading réel
     - Tester avec des coûts de transaction plus élevés (0.03%, 0.05%)
 
-    ### 📊 Score Pipeline
+    ### Score Pipeline
     - **Avant Round 6**: 9.5/10
     - **Après Round 6**: **9.8/10** (SHAP + Calibration + Grid Search)
     - **Après MLflow**: **10/10** (Versioning + Reproductibilité)

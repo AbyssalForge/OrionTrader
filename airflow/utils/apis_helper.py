@@ -302,7 +302,7 @@ def get_macro_context_yahoo(days: int = 365) -> dict:
             success_count += 1
             time.sleep(0.5)  # Petit délai pour éviter rate limiting
         except Exception as e:
-            print(f"[YAHOO] ⚠ {name} non disponible: {str(e)}")
+            print(f"[YAHOO] {name} non disponible: {str(e)}")
             failed_assets.append(name)
 
     print(f"[YAHOO] OK: {success_count}/{len(assets)} actifs recuperes")
@@ -345,7 +345,7 @@ if __name__ == "__main__":
     print("\n2. Test contexte macro complet:")
     try:
         context = get_macro_context_yahoo(days=30)
-        print(f"   ✓ {len(context)} actifs récupérés")
+        print(f" {len(context)} actifs récupérés")
         for key, df in context.items():
             print(f"   - {key}: {len(df)} lignes")
     except Exception as e:

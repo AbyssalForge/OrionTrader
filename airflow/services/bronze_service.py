@@ -160,13 +160,13 @@ def extract_wikipedia_indices():
     indices_data = scrape_all_indices()
 
     if not indices_data:
-        print("[BRONZE/WIKIPEDIA] ❌ Aucune donnée scrapée")
+        print("[BRONZE/WIKIPEDIA] Aucune donnée scrapée")
         return {}
 
     file_paths = save_scraped_data_to_parquet(indices_data, base_path)
 
     stats = get_scraping_stats(indices_data)
-    print(f"[BRONZE/WIKIPEDIA] ✅ Statistiques:")
+    print(f"[BRONZE/WIKIPEDIA] Statistiques:")
     print(f"[BRONZE/WIKIPEDIA]   - Indices: {stats['total_indices']}")
     print(f"[BRONZE/WIKIPEDIA]   - Entreprises: {stats['total_companies']}")
     print(f"[BRONZE/WIKIPEDIA]   - Tickers uniques: {stats['unique_tickers']}")

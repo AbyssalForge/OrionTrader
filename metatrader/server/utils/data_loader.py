@@ -28,7 +28,7 @@ def connect_mt5(max_retries=3, wait_time=2):
     if not mt5.initialize():
         terminal_info = mt5.terminal_info()
         if terminal_info is None:
-            print("❌ ERREUR CRITIQUE: MetaTrader 5 n'est pas lancé ou installé!")
+            print(" ERREUR CRITIQUE: MetaTrader 5 n'est pas lancé ou installé!")
             print("   Solutions:")
             print("   1. Lancez MetaTrader 5 manuellement sur votre machine Windows")
             print("   2. Assurez-vous que MT5 reste ouvert pendant l'exécution")
@@ -68,10 +68,10 @@ def connect_mt5(max_retries=3, wait_time=2):
                 time.sleep(wait_time)
                 continue
 
-        print("✅ Connexion à MT5 réussie!")
+        print(" Connexion à MT5 réussie!")
         return True
 
-    print(f"❌ Échec après {max_retries} tentatives")
+    print(f" Échec après {max_retries} tentatives")
     return False
 
 
@@ -100,14 +100,14 @@ def import_data(start=None, end=None, symbol=None):
     if not connect_mt5():
         raise RuntimeError("Impossible de se connecter à MetaTrader 5.")
 
-    print(f"📊 Récupération données MT5: {symbol} de {start} à {end}")
+    print(f" Récupération données MT5: {symbol} de {start} à {end}")
 
     # Récupération des données
     rates = mt5.copy_rates_range(symbol, TIMEFRAME, start.to_pydatetime(), end.to_pydatetime())
 
     if rates is None or len(rates) == 0:
         mt5.shutdown()
-        raise ValueError(f"❌ Aucune donnée reçue depuis MT5 pour {symbol} ({start} - {end}).")
+        raise ValueError(f" Aucune donnée reçue depuis MT5 pour {symbol} ({start} - {end}).")
 
     # Formatage
     df = pd.DataFrame(rates)
@@ -117,6 +117,6 @@ def import_data(start=None, end=None, symbol=None):
 
     mt5.shutdown()
 
-    print(f"✅ {len(df)} lignes récupérées")
+    print(f" {len(df)} lignes récupérées")
 
     return df

@@ -123,7 +123,7 @@ class MT5APIClient:
             df = client.get_rates("EURUSD", 16, "2023-01-01", "2025-11-01")
             print(df.head())
         """
-        print(f"📥 Téléchargement {symbol} depuis {date_from} jusqu'à {date_to}...")
+        print(f" Téléchargement {symbol} depuis {date_from} jusqu'à {date_to}...")
 
         start_time = time.time()
 
@@ -158,7 +158,7 @@ class MT5APIClient:
         elapsed = time.time() - start_time
         size_mb = len(response.content) / (1024 * 1024)
 
-        print(f"✅ {count:,} barres téléchargées en {elapsed:.2f}s ({size_mb:.2f} MB)")
+        print(f" {count:,} barres téléchargées en {elapsed:.2f}s ({size_mb:.2f} MB)")
 
         return df
 

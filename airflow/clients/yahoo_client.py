@@ -160,7 +160,7 @@ class YahooFinanceClient:
                 success_count += 1
                 time.sleep(0.5)  # Rate limiting
             except Exception as e:
-                print(f"[YAHOO] ⚠ {name} unavailable: {str(e)}")
+                print(f"[YAHOO] {name} unavailable: {str(e)}")
                 failed_assets.append(name)
 
         print(f"[YAHOO] OK: {success_count}/{len(assets)} assets fetched")

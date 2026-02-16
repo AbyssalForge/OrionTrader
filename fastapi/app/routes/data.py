@@ -344,7 +344,7 @@ def get_latest_features(
     token: APIToken = Depends(verify_api_token)
 ):
     """
-    🎯 Dernières features disponibles par source
+    Dernières features disponibles par source
 
     Récupère la dernière ligne de chaque table:
     - MT5 (microstructure)

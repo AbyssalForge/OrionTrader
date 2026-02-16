@@ -20,7 +20,7 @@ try:
     from mlflow.tracking import MlflowClient
     from mlflow.exceptions import MlflowException
 except ImportError:
-    print("❌ MLflow n'est pas installé. Installer avec: pip install mlflow")
+    print(" MLflow n'est pas installé. Installer avec: pip install mlflow")
     sys.exit(1)
 
 
@@ -43,7 +43,7 @@ def get_mlflow_client(tracking_uri: Optional[str] = None) -> MlflowClient:
     elif os.getenv("MLFLOW_TRACKING_URI"):
         mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
     else:
-        print("⚠️  MLFLOW_TRACKING_URI non défini, utilisation de l'URI par défaut")
+        print("️ MLFLOW_TRACKING_URI non défini, utilisation de l'URI par défaut")
 
     return MlflowClient()
 
@@ -65,7 +65,7 @@ def list_model_versions(
         versions = client.search_model_versions(f"name='{model_name}'")
 
         if not versions:
-            print(f"❌ Aucune version trouvée pour le modèle '{model_name}'")
+            print(f" Aucune version trouvée pour le modèle '{model_name}'")
             return []
 
         # Filtrer par stage si spécifié
@@ -78,7 +78,7 @@ def list_model_versions(
         return versions
 
     except MlflowException as e:
-        print(f"❌ Erreur MLflow: {e}")
+        print(f" Erreur MLflow: {e}")
         return []
 
 
@@ -109,32 +109,32 @@ def promote_model_version(
         if version:
             # Version spécifique fournie
             target_version = version
-            print(f"🎯 Promotion de la version {version} de '{model_name}'")
+            print(f" Promotion de la version {version} de '{model_name}'")
 
         elif from_stage:
             # Prendre la dernière version du stage source
             versions = list_model_versions(client, model_name, stage=from_stage)
 
             if not versions:
-                print(f"❌ Aucune version en stage '{from_stage}' pour '{model_name}'")
+                print(f" Aucune version en stage '{from_stage}' pour '{model_name}'")
                 return False
 
             target_version = versions[0].version
-            print(f"🎯 Promotion de la version {target_version} depuis {from_stage}")
+            print(f" Promotion de la version {target_version} depuis {from_stage}")
 
         else:
-            print("❌ Fournir --version ou --from-stage")
+            print(" Fournir --version ou --from-stage")
             return False
 
         # Vérifier que la version existe
         try:
             model_version = client.get_model_version(model_name, target_version)
         except MlflowException:
-            print(f"❌ Version {target_version} introuvable pour '{model_name}'")
+            print(f" Version {target_version} introuvable pour '{model_name}'")
             return False
 
         # Afficher les métriques de la version
-        print(f"\n📊 Métriques de la version {target_version}:")
+        print(f"\n Métriques de la version {target_version}:")
         run_id = model_version.run_id
         run = client.get_run(run_id)
         metrics = run.data.metrics
@@ -147,19 +147,19 @@ def promote_model_version(
         existing_versions = list_model_versions(client, model_name, stage=to_stage)
 
         if existing_versions and not auto_archive:
-            print(f"\n⚠️  {len(existing_versions)} version(s) déjà en {to_stage}:")
+            print(f"\n️ {len(existing_versions)} version(s) déjà en {to_stage}:")
             for v in existing_versions:
                 print(f"   - Version {v.version}")
 
             if to_stage == "Production":
-                confirm = input(f"\n❓ Archiver automatiquement et promouvoir ? (y/N): ")
+                confirm = input(f"\n Archiver automatiquement et promouvoir ? (y/N): ")
                 if confirm.lower() != 'y':
-                    print("❌ Promotion annulée")
+                    print(" Promotion annulée")
                     return False
                 auto_archive = True
 
         # Promouvoir la version
-        print(f"\n🚀 Promotion de {model_name} v{target_version} vers {to_stage}...")
+        print(f"\n Promotion de {model_name} v{target_version} vers {to_stage}...")
 
         client.transition_model_version_stage(
             name=model_name,
@@ -168,7 +168,7 @@ def promote_model_version(
             archive_existing_versions=auto_archive
         )
 
-        print(f"✅ Version {target_version} promue avec succès vers {to_stage}!")
+        print(f" Version {target_version} promue avec succès vers {to_stage}!")
 
         # Ajouter une description
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -183,7 +183,7 @@ def promote_model_version(
         return True
 
     except MlflowException as e:
-        print(f"❌ Erreur lors de la promotion: {e}")
+        print(f" Erreur lors de la promotion: {e}")
         return False
 
 
@@ -203,7 +203,7 @@ def display_model_summary(client: MlflowClient, model_name: str):
     all_versions = list_model_versions(client, model_name)
 
     if not all_versions:
-        print("❌ Aucune version trouvée")
+        print(" Aucune version trouvée")
         return
 
     stages_count = {}
@@ -211,14 +211,14 @@ def display_model_summary(client: MlflowClient, model_name: str):
         stage = v.current_stage
         stages_count[stage] = stages_count.get(stage, 0) + 1
 
-    print(f"📈 Total versions: {len(all_versions)}")
+    print(f" Total versions: {len(all_versions)}")
     print(f"\nRépartition par stage:")
     for stage, count in sorted(stages_count.items()):
         print(f"   - {stage:15s}: {count} version(s)")
 
     # Afficher les versions en Production
     print(f"\n{'─'*80}")
-    print("🏆 VERSIONS EN PRODUCTION:")
+    print(" VERSIONS EN PRODUCTION:")
     print(f"{'─'*80}")
 
     prod_versions = [v for v in all_versions if v.current_stage == "Production"]
@@ -235,7 +235,7 @@ def display_model_summary(client: MlflowClient, model_name: str):
 
     # Afficher les versions en Staging
     print(f"\n{'─'*80}")
-    print("🔬 VERSIONS EN STAGING:")
+    print(" VERSIONS EN STAGING:")
     print(f"{'─'*80}")
 
     staging_versions = [v for v in all_versions if v.current_stage == "Staging"]

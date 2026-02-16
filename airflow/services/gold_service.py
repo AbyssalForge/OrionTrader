@@ -316,7 +316,7 @@ def load_wikipedia_to_db(wikipedia_parquet: str, pipeline_run_id: str = None):
     print(f"[GOLD/WIKIPEDIA] Chargement Wikipedia depuis {wikipedia_parquet}...")
 
     if not wikipedia_parquet:
-        print("[GOLD/WIKIPEDIA] ❌ Aucun fichier fourni")
+        print("[GOLD/WIKIPEDIA] Aucun fichier fourni")
         return {
             'status': 'error',
             'table': 'wikipedia_indices',
