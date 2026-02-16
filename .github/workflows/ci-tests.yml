@@ -1,91 +1,91 @@
 name: CI - Tests Automatisés
 
 on:
- push:
- branches: [ main, dev, bloc_e3_ia, E3_vrais ]
- pull_request:
- branches: [ main, develop ]
+  push:
+    branches: [ main, dev, bloc_e3_ia, E3_vrais ]
+  pull_request:
+    branches: [ main, develop ]
 
 jobs:
- test:
- name: Tests & Coverage
- runs-on: ubuntu-latest
+  test:
+    name: Tests & Coverage
+    runs-on: ubuntu-latest
 
- strategy:
- matrix:
- python-version: ['3.11']
+    strategy:
+      matrix:
+        python-version: ['3.11']
 
- steps:
- - name: Checkout code
- uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
- - name: Set up Python ${{ matrix.python-version }}
- uses: actions/setup-python@v4
- with:
- python-version: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
 
- - name: Cache pip dependencies
- uses: actions/cache@v4
- with:
- path: ~/.cache/pip
- key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
- restore-keys: |
- ${{ runner.os }}-pip-
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
- - name: Install dependencies
- run: |
- python -m pip install --upgrade pip
- pip install -r requirements-dev.txt
- pip install -r airflow/requirements.txt || echo "No airflow requirements"
- pip install -r fastapi/requirements.txt || echo "No fastapi requirements"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -r airflow/requirements.txt || echo "No airflow requirements"
+          pip install -r fastapi/requirements.txt || echo "No fastapi requirements"
 
- - name: Run tests with coverage
- run: |
- pytest tests/ \
- --cov=airflow \
- --cov=fastapi \
- --cov-report=xml \
- --cov-report=html \
- --cov-report=term-missing \
- -v
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --cov=airflow \
+            --cov=fastapi \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term-missing \
+            -v
 
- - name: Upload coverage report
- if: always()
- uses: actions/upload-artifact@v4
- with:
- name: coverage-report
- path: |
- coverage.xml
- htmlcov/
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage.xml
+            htmlcov/
 
- lint:
- name: Code Quality
- runs-on: ubuntu-latest
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
 
- steps:
- - name: Checkout code
- uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
- - name: Set up Python 3.11
- uses: actions/setup-python@v4
- with:
- python-version: '3.11'
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
- - name: Install linting tools
- run: |
- pip install black flake8 isort
+      - name: Install linting tools
+        run: |
+          pip install black flake8 isort
 
- - name: Check code formatting (Black)
- run: |
- black --check airflow/ fastapi/ tests/ || echo "Code formatting issues found"
- continue-on-error: true
+      - name: Check code formatting (Black)
+        run: |
+          black --check airflow/ fastapi/ tests/ || echo "Code formatting issues found"
+        continue-on-error: true
 
- - name: Check imports sorting (isort)
- run: |
- isort --check-only airflow/ fastapi/ tests/ || echo "Import sorting issues found"
- continue-on-error: true
+      - name: Check imports sorting (isort)
+        run: |
+          isort --check-only airflow/ fastapi/ tests/ || echo "Import sorting issues found"
+        continue-on-error: true
 
- - name: Lint with flake8
- run: |
- flake8 airflow/ fastapi/ tests/ --max-line-length=120 --extend-ignore=E203,W503 || echo " Linting issues found"
- continue-on-error: true
+      - name: Lint with flake8
+        run: |
+          flake8 airflow/ fastapi/ tests/ --max-line-length=120 --extend-ignore=E203,W503 || echo " Linting issues found"
+        continue-on-error: true
