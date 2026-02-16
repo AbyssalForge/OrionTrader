@@ -23,8 +23,8 @@ from app.routes import market, data, signals, model, auth, monitoring
 
 
 app = FastAPI(
-    title=settings.APP_NAME,
-    description="""🚀 **API de trading pour EUR/USD** avec données multi-sources et signaux ML
+ title=settings.APP_NAME,
+ description=""" **API de trading pour EUR/USD** avec données multi-sources et signaux ML
 
 ## Architecture des données
 
@@ -35,7 +35,7 @@ app = FastAPI(
 
 ## Endpoints disponibles
 
-### 📊 Market Data (7 endpoints)
+### Market Data (7 endpoints)
 - `GET /market/latest` - Dernier snapshot de marché disponible
 - `GET /market/ohlcv/m15` - Données OHLCV M15 pour charting
 - `GET /market/ohlcv/latest` - Dernier prix OHLCV disponible
@@ -44,7 +44,7 @@ app = FastAPI(
 - `GET /market/stats` - Statistiques de marché agrégées
 - `GET /health` - Health check et état des tables
 
-### 🎯 Data & Features (6 endpoints)
+### Data & Features (6 endpoints)
 - `GET /data/features/mt5` - Features microstructure MT5 (volatilité, momentum, chandeliers)
 - `GET /data/features/yahoo` - Features macro Yahoo Finance (DXY, VIX, yields, sentiment)
 - `GET /data/features/macro` - Features économiques (PIB, inflation, taux, chômage)
@@ -52,26 +52,26 @@ app = FastAPI(
 - `GET /data/training` - Dataset complet avec JOINs pour ML
 - `GET /data/stats` - Statistiques sur les données disponibles
 
-### 🚨 Trading Signals (5 endpoints)
+### Trading Signals (5 endpoints)
 - `GET /signals/high-confidence` - Signaux haute confiance avec filtres
 - `GET /signals/best` - Top N meilleurs signaux (score + cohérence)
 - `GET /signals/strong-trend` - Signaux avec forte tendance (bullish/bearish)
 - `GET /signals/event-window` - Signaux pendant fenêtres d'événements macro
 - `GET /signals/stats` - Statistiques et distribution des signaux
 
-### 📡 Monitoring (3 endpoints)
+### Monitoring (3 endpoints)
 - `GET /monitoring/metrics` - Métriques Prometheus (scraping, format texte)
 - `GET /monitoring/stats` - Statistiques temps réel en JSON (confiance, latence, cache)
 - `GET /monitoring/drift` - Détection du drift de distribution des prédictions
 
-### 🤖 ML Model (5 endpoints)
+### ML Model (5 endpoints)
 - `POST /model/predict` - Prédiction unique (SHORT/NEUTRAL/LONG)
 - `POST /model/predict/batch` - Prédictions en batch pour backtesting
 - `GET /model/info` - Informations sur le modèle chargé
 - `GET /model/metrics` - Métriques d'entraînement du modèle
 - `POST /model/reload` - Recharge le modèle (après mise à jour)
 
-## 💡 Use cases
+## Use cases
 
 - **Trading automatique**: Utiliser `/signals/high-confidence` pour décisions automatiques
 - **Prédictions ML en temps réel**: `/model/predict` pour obtenir des prédictions SHORT/NEUTRAL/LONG
@@ -81,26 +81,26 @@ app = FastAPI(
 - **Analyse macro**: Données économiques via `/data/features/macro`
 - **Monitoring**: Health check via `/health`, métriques modèle via `/model/metrics`, stats temps réel via `/monitoring/stats`
 
-## 🔑 Paramètres principaux
+## Paramètres principaux
 
 - **Pagination**: `limit` et `offset` sur la plupart des endpoints
 - **Filtrage temporel**: `start_date` et `end_date` au format ISO
 - **Filtres signaux**: `min_confidence`, `regime`, `volatility_regime`
 - **Filtres tendance**: `direction` (bullish/bearish), `min_trend_strength`
 """,
-    version=settings.APP_VERSION,
-    docs_url="/docs",
-    redoc_url="/redoc",
+ version=settings.APP_VERSION,
+ docs_url="/docs",
+ redoc_url="/redoc",
 )
 
 
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+ CORSMiddleware,
+ allow_origins=settings.CORS_ORIGINS,
+ allow_credentials=True,
+ allow_methods=["*"],
+ allow_headers=["*"],
 )
 
 
@@ -120,93 +120,93 @@ app.include_router(monitoring.router, prefix="/monitoring", tags=["Monitoring"])
 
 @app.get("/", tags=["Root"])
 def read_root():
-    """
-     Page d'accueil de l'API
+ """
+ Page d'accueil de l'API
 
-    Retourne les informations de base et les liens vers la documentation.
-    """
-    return {
-        "message": f"{settings.APP_NAME} v{settings.APP_VERSION}",
-        "status": "running",
-        "environment": settings.ENVIRONMENT,
-        "documentation": "/docs",
-        "alternative_docs": "/redoc",
-    }
+ Retourne les informations de base et les liens vers la documentation.
+ """
+ return {
+ "message": f"{settings.APP_NAME} v{settings.APP_VERSION}",
+ "status": "running",
+ "environment": settings.ENVIRONMENT,
+ "documentation": "/docs",
+ "alternative_docs": "/redoc",
+ }
 
 
 @app.get("/health", tags=["Health"])
 def health_check(db: Session = Depends(get_db)):
-    """
-     Health check complet
+ """
+ Health check complet
 
-    Vérifie:
-    - Status de l'API
-    - Connexion à la base de données
-    - Nombre de lignes dans chaque table
-    """
-    db_connected = test_connection()
+ Vérifie:
+ - Status de l'API
+ - Connexion à la base de données
+ - Nombre de lignes dans chaque table
+ """
+ db_connected = test_connection()
 
-    tables = {}
-    if db_connected:
-        try:
-            tables = get_table_counts()
-        except Exception as e:
-            tables = {"error": str(e)}
+ tables = {}
+ if db_connected:
+ try:
+ tables = get_table_counts()
+ except Exception as e:
+ tables = {"error": str(e)}
 
-    return {
-        "status": "ok" if db_connected else "error",
-        "database": "connected" if db_connected else "disconnected",
-        "timestamp": datetime.now(),
-        "tables": tables
-    }
+ return {
+ "status": "ok" if db_connected else "error",
+ "database": "connected" if db_connected else "disconnected",
+ "timestamp": datetime.now(),
+ "tables": tables
+ }
 
 
 
 @app.on_event("startup")
 async def startup_event():
-    """Événement au démarrage de l'application"""
-    print("=" * 70)
-    print(f"[INFO] {settings.APP_NAME} v{settings.APP_VERSION} - Starting...")
-    print(f"[INFO] Environment: {settings.ENVIRONMENT}")
-    print("=" * 70)
+ """Événement au démarrage de l'application"""
+ print("=" * 70)
+ print(f"[INFO] {settings.APP_NAME} v{settings.APP_VERSION} - Starting...")
+ print(f"[INFO] Environment: {settings.ENVIRONMENT}")
+ print("=" * 70)
 
-    if test_connection():
-        print("[OK] Trading Database connection: OK")
-    else:
-        print("[ERROR] Trading Database connection: FAILED")
-        print("[WARNING] API will start but data endpoints will fail")
+ if test_connection():
+ print("[OK] Trading Database connection: OK")
+ else:
+ print("[ERROR] Trading Database connection: FAILED")
+ print("[WARNING] API will start but data endpoints will fail")
 
-    if test_auth_connection():
-        print("[OK] Auth Database connection: OK")
-        try:
-            init_auth_tables()
-            print("[OK] Auth tables initialized")
-        except Exception as e:
-            print(f"[WARNING] Auth tables init failed: {e}")
-    else:
-        print("[ERROR] Auth Database connection: FAILED")
-        print("[WARNING] Authentication will not work properly")
+ if test_auth_connection():
+ print("[OK] Auth Database connection: OK")
+ try:
+ init_auth_tables()
+ print("[OK] Auth tables initialized")
+ except Exception as e:
+ print(f"[WARNING] Auth tables init failed: {e}")
+ else:
+ print("[ERROR] Auth Database connection: FAILED")
+ print("[WARNING] Authentication will not work properly")
 
-    print("=" * 70)
-    print("[INFO] Documentation available at: http://localhost:8000/docs")
-    print("=" * 70)
+ print("=" * 70)
+ print("[INFO] Documentation available at: http://localhost:8000/docs")
+ print("=" * 70)
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Événement à l'arrêt de l'application"""
-    print("=" * 70)
-    print(f"[INFO] {settings.APP_NAME} - Shutting down...")
-    print("=" * 70)
+ """Événement à l'arrêt de l'application"""
+ print("=" * 70)
+ print(f"[INFO] {settings.APP_NAME} - Shutting down...")
+ print("=" * 70)
 
 
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+ import uvicorn
+ uvicorn.run(
+ "app.main:app",
+ host="0.0.0.0",
+ port=8000,
+ reload=True,
+ log_level="info"
+ )

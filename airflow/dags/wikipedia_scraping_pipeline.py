@@ -95,9 +95,9 @@ def wikipedia_scraping():
         result = load_wikipedia_to_db(wikipedia_parquet, pipeline_run_id)
 
         if result.get('status') == 'success':
-            print(f"[LOAD] ✅ Wikipedia chargé avec succès: {result.get('rows', 0)} tickers")
+            print(f"[LOAD] Wikipedia chargé avec succès: {result.get('rows', 0)} tickers")
         else:
-            print(f"[LOAD] ❌ Erreur lors du chargement: {result.get('error', 'Unknown')}")
+            print(f"[LOAD] Erreur lors du chargement: {result.get('error', 'Unknown')}")
 
         return result
 
@@ -125,13 +125,13 @@ def wikipedia_scraping():
             else:
                 validation_result['quality'] = 'excellent'
 
-            print(f"[VALIDATE] ✅ Validation réussie: {rows} tickers chargés")
+            print(f"[VALIDATE] Validation réussie: {rows} tickers chargés")
 
         else:
             validation_result['status'] = 'failed'
             validation_result['wikipedia_ok'] = False
             validation_result['error'] = load_result.get('error', 'Unknown error')
-            print(f"[VALIDATE] ❌ Validation échouée: {validation_result['error']}")
+            print(f"[VALIDATE] Validation échouée: {validation_result['error']}")
 
 
         return validation_result

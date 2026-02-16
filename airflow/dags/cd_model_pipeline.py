@@ -319,7 +319,7 @@ def cd_model_pipeline():
             webhook_url = vault.get_secret("Discord", "WEBHOOK_URL")
 
             message = (
-                f"✅ **CD Model Pipeline — Déploiement réussi**\n"
+                f" **CD Model Pipeline — Déploiement réussi**\n"
                 f"```\n"
                 f"Modèle     : {MODEL_NAME}\n"
                 f"Version    : {result['version']}\n"
