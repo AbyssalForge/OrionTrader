@@ -177,7 +177,7 @@ def get_model(version: Optional[str] = None, stage: Optional[str] = None):
         stage: Stage du modèle ("Production", "Staging", "None")
 
     Returns:
-        Modèle chargé
+        Modèle chargé (LightGBM natif avec support de predict_proba)
     """
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
@@ -189,8 +189,23 @@ def get_model(version: Optional[str] = None, stage: Optional[str] = None):
         model_uri = f"models:/{MODEL_NAME}/latest"
 
     try:
-        model = mlflow.pyfunc.load_model(model_uri)
-        return model
+        # Charger le modèle LightGBM natif (pas le wrapper pyfunc)
+        # Cela permet d'avoir accès à predict_proba()
+        try:
+            model = mlflow.lightgbm.load_model(model_uri)
+            print(f"[INFO] Modèle LightGBM natif chargé depuis {model_uri}")
+            return model
+        except:
+            # Fallback: charger en pyfunc et extraire le modèle natif
+            pyfunc_model = mlflow.pyfunc.load_model(model_uri)
+            try:
+                # Tenter d'accéder au modèle LightGBM sous-jacent
+                model = pyfunc_model._model_impl.lgb_model
+                print(f"[INFO] Modèle extrait du wrapper pyfunc")
+                return model
+            except:
+                print(f"[WARNING] Impossible d'extraire le modèle natif, utilisation du wrapper pyfunc")
+                return pyfunc_model
     except Exception as e:
         raise HTTPException(
             status_code=404,
@@ -318,14 +333,26 @@ def transform_raw_to_features(data: SimplePredictionRequest) -> dict:
         features['signal_divergence_count'] = 0 if dxy_bias == momentum_bias else 1
         features['euro_strength_bias'] = momentum_bias
 
-        # Features par défaut pour celles qui manquent
+        # Features manquantes - ajouter avec valeurs par défaut
+        vix_val = features.get('vix_close', 15.0)
+        features['vix_level'] = 1.0 if vix_val > 20 else (0.0 if vix_val < 15 else 0.5)
+        features['vix_change'] = 0.0  # Pas d'historique VIX disponible
+
+        features['eurozone_cpi'] = 2.5  # Valeur typique
+        features['cpi_change'] = 0.0
+        features['inflation_pressure'] = 0.5
+
+        # Régimes (encodés en numérique)
+        features['regime_composite'] = 0  # 0=neutral (peut être encodé différemment dans le modèle)
+        features['volatility_regime'] = 1  # 0=low, 1=normal, 2=high
+
+        # Features par défaut pour celles qui manquent encore
         default_features = {
             'gdp_growth': 2.0,
             'unemployment': 4.0,
             'inflation': 3.0,
             'policy_rate': 5.0,
             'regime': 0,
-            'volatility_regime': 1,
             'trend_regime': 0,
             'sentiment': 0.0,
             'stress': 0.0,
@@ -337,8 +364,6 @@ def transform_raw_to_features(data: SimplePredictionRequest) -> dict:
             'event_window_active': 0,
             'high_impact_event': 0,
             'economic_surprise': 0.0,
-            'vix_level': 0.0,
-            'vix_change': 0.0,
         }
 
         for key, value in default_features.items():
