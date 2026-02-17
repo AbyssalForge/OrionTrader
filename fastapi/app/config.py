@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = str(PROJECT_ROOT / ".env")
         case_sensitive = True
+        extra = 'ignore'  # Ignorer les variables .env non définies (ex: AIRFLOW_*, MLFLOW_*)
 
 
 settings = Settings()

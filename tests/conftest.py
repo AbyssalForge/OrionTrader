@@ -113,17 +113,67 @@ def test_db_session(test_db_engine):
 
 
 @pytest.fixture
-def test_api_client():
-    """Client de test FastAPI"""
+def test_api_client(test_db_session, monkeypatch):
+    """Client de test FastAPI avec authentification mockée"""
     from fastapi.testclient import TestClient
+    from unittest.mock import MagicMock
+    import sqlalchemy
+    import sqlalchemy.orm
+
     fastapi_path = project_root / "fastapi"
     if str(fastapi_path) not in sys.path:
         sys.path.insert(0, str(fastapi_path))
 
+    # Mock des imports optionnels pour les tests
+    sys.modules['prometheus_fastapi_instrumentator'] = MagicMock()
+    sys.modules['prometheus_client'] = MagicMock()
+
+    # Mock de sqlalchemy.create_engine pour éviter l'import de psycopg2
+    # et la vraie connexion à PostgreSQL lors de l'import de app.core.database
+    mock_engine = MagicMock()
+    mock_sessionmaker_class = MagicMock(return_value=MagicMock)
+
+    monkeypatch.setattr(sqlalchemy, 'create_engine', lambda *args, **kwargs: mock_engine)
+    monkeypatch.setattr(sqlalchemy.orm, 'sessionmaker', lambda *args, **kwargs: mock_sessionmaker_class)
+
+    # Force reload des modules app.* pour qu'ils utilisent les mocks
+    app_modules = [m for m in list(sys.modules.keys()) if m.startswith('app.')]
+    for module_name in app_modules:
+        del sys.modules[module_name]
+
     from app.main import app
+    from app.core.auth import verify_api_token
+    from app.core.dependencies import get_db
+    from app.models.api_token import APIToken
+
+    # Mock de l'authentification - retourne un token admin valide
+    async def override_verify_api_token():
+        return APIToken(
+            token="test_token",
+            name="Test API Key",
+            is_active=True,
+            created_at=datetime.now(),
+            scopes="read,write,admin"  # Inclure admin pour les tests
+        )
+
+    # Mock de la base de données - retourne une session mockée
+    mock_db_session = MagicMock()
+    # La session mockée doit supporter query().filter().order_by().first() etc.
+    mock_db_session.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
+    mock_db_session.query.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
+
+    def override_get_db():
+        yield mock_db_session
+
+    # Override les dépendances
+    app.dependency_overrides[verify_api_token] = override_verify_api_token
+    app.dependency_overrides[get_db] = override_get_db
 
     client = TestClient(app)
     yield client
+
+    # Nettoyer les overrides après les tests
+    app.dependency_overrides.clear()
 
 
 
