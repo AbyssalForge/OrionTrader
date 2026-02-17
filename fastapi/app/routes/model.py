@@ -510,24 +510,34 @@ def predict(
 
         features_array = np.array([[features_dict.get(f, 0.0) for f in feature_names]])
 
+        # Pour LightGBM Booster, predict() retourne directement les probabilités
         prediction_raw = model.predict(features_array)
-        if isinstance(prediction_raw, np.ndarray):
-            if len(prediction_raw.shape) > 1:
-                prediction = int(prediction_raw[0][0])
-            else:
-                prediction = int(prediction_raw[0])
-        else:
-            prediction = int(prediction_raw)
 
-        try:
-            prob_array = model.predict_proba(features_array)
-            if len(prob_array.shape) > 1:
-                probabilities = prob_array[0]
+        # Vérifier si c'est un Booster LightGBM (retourne des probabilités)
+        if isinstance(prediction_raw, np.ndarray) and len(prediction_raw.shape) > 1 and prediction_raw.shape[1] > 1:
+            # prediction_raw contient les probabilités [p_class_0, p_class_1, p_class_2]
+            probabilities = prediction_raw[0]
+            prediction = int(np.argmax(probabilities))
+        else:
+            # Cas classique : predict() retourne la classe, on cherche predict_proba()
+            if isinstance(prediction_raw, np.ndarray):
+                if len(prediction_raw.shape) > 1:
+                    prediction = int(prediction_raw[0][0])
+                else:
+                    prediction = int(prediction_raw[0])
             else:
-                probabilities = prob_array
-        except (AttributeError, Exception):
-            probabilities = np.array([0.33, 0.34, 0.33])
-            probabilities[int(prediction)] = 1.0
+                prediction = int(prediction_raw)
+
+            # Essayer d'obtenir les probabilités
+            try:
+                prob_array = model.predict_proba(features_array)
+                if len(prob_array.shape) > 1:
+                    probabilities = prob_array[0]
+                else:
+                    probabilities = prob_array
+            except (AttributeError, Exception):
+                probabilities = np.array([0.33, 0.34, 0.33])
+                probabilities[int(prediction)] = 1.0
 
         response = format_prediction_response(prediction, probabilities, version or stage)
         track_prediction_metrics(prediction, response.probabilities, version or stage)
@@ -601,24 +611,34 @@ def predict_batch(
 
             features_array = np.array([[features_dict.get(f, 0.0) for f in feature_names]])
 
+            # Pour LightGBM Booster, predict() retourne directement les probabilités
             prediction_raw = model.predict(features_array)
-            if isinstance(prediction_raw, np.ndarray):
-                if len(prediction_raw.shape) > 1:
-                    prediction = int(prediction_raw[0][0])
-                else:
-                    prediction = int(prediction_raw[0])
-            else:
-                prediction = int(prediction_raw)
 
-            try:
-                prob_array = model.predict_proba(features_array)
-                if len(prob_array.shape) > 1:
-                    probabilities = prob_array[0]
+            # Vérifier si c'est un Booster LightGBM (retourne des probabilités)
+            if isinstance(prediction_raw, np.ndarray) and len(prediction_raw.shape) > 1 and prediction_raw.shape[1] > 1:
+                # prediction_raw contient les probabilités [p_class_0, p_class_1, p_class_2]
+                probabilities = prediction_raw[0]
+                prediction = int(np.argmax(probabilities))
+            else:
+                # Cas classique : predict() retourne la classe
+                if isinstance(prediction_raw, np.ndarray):
+                    if len(prediction_raw.shape) > 1:
+                        prediction = int(prediction_raw[0][0])
+                    else:
+                        prediction = int(prediction_raw[0])
                 else:
-                    probabilities = prob_array
-            except (AttributeError, Exception):
-                probabilities = np.array([0.33, 0.34, 0.33])
-                probabilities[int(prediction)] = 1.0
+                    prediction = int(prediction_raw)
+
+                # Essayer d'obtenir les probabilités
+                try:
+                    prob_array = model.predict_proba(features_array)
+                    if len(prob_array.shape) > 1:
+                        probabilities = prob_array[0]
+                    else:
+                        probabilities = prob_array
+                except (AttributeError, Exception):
+                    probabilities = np.array([0.33, 0.34, 0.33])
+                    probabilities[int(prediction)] = 1.0
 
             response = format_prediction_response(prediction, probabilities, version or stage)
             track_prediction_metrics(prediction, response.probabilities, version or stage)
