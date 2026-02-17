@@ -485,16 +485,20 @@ def predict(
 
         features_dict = transform_raw_to_features(request)
 
+        # Récupérer les métadonnées du modèle pour avoir la vraie version et les features
+        actual_version = None
         try:
             client = mlflow.tracking.MlflowClient()
             mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
             if version:
                 model_version = client.get_model_version(MODEL_NAME, version)
+                actual_version = model_version.version
             else:
                 versions = client.search_model_versions(f"name='{MODEL_NAME}'")
                 if versions:
-                    model_version = versions[0]
+                    model_version = sorted(versions, key=lambda v: int(v.version), reverse=True)[0]
+                    actual_version = model_version.version
                 else:
                     raise Exception("Aucune version de modèle trouvée")
 
@@ -539,8 +543,8 @@ def predict(
                 probabilities = np.array([0.33, 0.34, 0.33])
                 probabilities[int(prediction)] = 1.0
 
-        response = format_prediction_response(prediction, probabilities, version or stage)
-        track_prediction_metrics(prediction, response.probabilities, version or stage)
+        response = format_prediction_response(prediction, probabilities, actual_version)
+        track_prediction_metrics(prediction, response.probabilities, actual_version)
 
         latency_ms = (time.time() - start_time) * 1000
         monitoring_stats.update_prediction(
@@ -578,16 +582,20 @@ def predict_batch(
 
         model = load_model_with_cache(version, stage)
 
+        # Récupérer les métadonnées du modèle
+        actual_version = None
         try:
             client = mlflow.tracking.MlflowClient()
             mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
             if version:
                 model_version = client.get_model_version(MODEL_NAME, version)
+                actual_version = model_version.version
             else:
                 versions = client.search_model_versions(f"name='{MODEL_NAME}'")
                 if versions:
-                    model_version = versions[0]
+                    model_version = sorted(versions, key=lambda v: int(v.version), reverse=True)[0]
+                    actual_version = model_version.version
                 else:
                     raise Exception("Aucune version de modèle trouvée")
 
@@ -640,8 +648,8 @@ def predict_batch(
                     probabilities = np.array([0.33, 0.34, 0.33])
                     probabilities[int(prediction)] = 1.0
 
-            response = format_prediction_response(prediction, probabilities, version or stage)
-            track_prediction_metrics(prediction, response.probabilities, version or stage)
+            response = format_prediction_response(prediction, probabilities, actual_version)
+            track_prediction_metrics(prediction, response.probabilities, actual_version)
             predictions.append(response)
 
         processing_time = (time.time() - start_time) * 1000  # en ms
