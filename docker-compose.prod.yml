@@ -170,6 +170,7 @@ services:
       VAULT_MOUNT: ${VAULT_MOUNT:-OrionTrader}
       FASTAPI_DB_HOST: ${POSTGRES_URL_VPN:-wg-easy}
       FASTAPI_DB_PORT: ${POSTGRES_PORT:-5432}
+      FASTAPI_DB_DATA_NAME: ${POSTGRES_DB:-trading_data}
       FASTAPI_DB_NAME: ${FASTAPI_DB_NAME:-fastapi}
       FASTAPI_DB_USER: ${FASTAPI_DB_USER:-fastapi}
       FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}

@@ -13,7 +13,7 @@ from app.core.vault import get_database_credentials
 
 DB_HOST = os.getenv("FASTAPI_DB_HOST", "postgres")
 DB_PORT = int(os.getenv("FASTAPI_DB_PORT", "5432"))
-DB_NAME = os.getenv("FASTAPI_DB_NAME", "fastapi")
+DB_NAME = os.getenv("FASTAPI_DB_DATA_NAME", "trading_data")
 DB_USER = os.getenv("FASTAPI_DB_USER", "fastapi")
 DB_PASSWORD = os.getenv("FASTAPI_DB_PASSWORD", "fastapi")
 

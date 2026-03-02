@@ -174,9 +174,11 @@ services:
       VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-orion-root-token}
       VAULT_MOUNT: ${VAULT_MOUNT:-OrionTrader}
-      # FastAPI Auth Database
+      # FastAPI Trading Database (données de marché)
       FASTAPI_DB_HOST: ${POSTGRES_URL:-postgres}
       FASTAPI_DB_PORT: ${POSTGRES_PORT:-5432}
+      FASTAPI_DB_DATA_NAME: ${POSTGRES_DB:-trading_data}
+      # FastAPI Auth Database
       FASTAPI_DB_NAME: ${FASTAPI_DB_NAME:-fastapi}
       FASTAPI_DB_USER: ${FASTAPI_DB_USER:-fastapi}
       FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:-fastapi}
