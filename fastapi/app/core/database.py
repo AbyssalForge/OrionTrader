@@ -2,7 +2,7 @@
 Database connection avec pool de connexions
 Utilise Vault pour récupérer les credentials
 """
-
+import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
@@ -11,15 +11,11 @@ from typing import Generator
 from app.config import settings, get_database_url
 from app.core.vault import get_database_credentials
 
-
-
-credentials = get_database_credentials()
-
-DB_HOST = settings.FASTAPI_DB_HOST
-DB_PORT = int(settings.FASTAPI_DB_PORT)
-DB_NAME = settings.FASTAPI_DB_NAME
-DB_USER = settings.FASTAPI_DB_USER
-DB_PASSWORD = settings.FASTAPI_DB_PASSWORD
+DB_HOST = os.getenv("FASTAPI_DB_HOST", "postgres")
+DB_PORT = int(os.getenv("FASTAPI_DB_PORT", "5432"))
+DB_NAME = os.getenv("FASTAPI_DB_NAME", "fastapi")
+DB_USER = os.getenv("FASTAPI_DB_USER", "fastapi")
+DB_PASSWORD = os.getenv("FASTAPI_DB_PASSWORD", "fastapi")
 
 DATABASE_URL = get_database_url(
     host=DB_HOST,
