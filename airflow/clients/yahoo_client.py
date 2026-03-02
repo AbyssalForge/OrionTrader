@@ -85,9 +85,21 @@ class YahooFinanceClient:
             response.raise_for_status()
             data = response.json()
 
-            # Extraire les données du chart
-            chart = data['chart']['result'][0]
-            timestamps = chart['timestamp']
+            # Vérifier que la réponse contient des données
+            results = data.get('chart', {}).get('result')
+            if not results:
+                error_info = data.get('chart', {}).get('error')
+                print(f"[YAHOO] WARNING: {ticker} - No result in response (error: {error_info})")
+                return pd.DataFrame()
+
+            chart = results[0]
+
+            # 'timestamp' peut être absent si aucune donnée sur la période (ex: weekend)
+            timestamps = chart.get('timestamp')
+            if not timestamps:
+                print(f"[YAHOO] WARNING: {ticker} - No data for the requested period")
+                return pd.DataFrame()
+
             quotes = chart['indicators']['quote'][0]
 
             # Créer le DataFrame
@@ -156,8 +168,12 @@ class YahooFinanceClient:
         for i, (key, name, ticker) in enumerate(assets, 1):
             try:
                 print(f"[YAHOO] {i}/{len(assets)} - {name}...")
-                context[key] = self.get_data(ticker, start=start, end=end, interval=interval)
-                success_count += 1
+                df = self.get_data(ticker, start=start, end=end, interval=interval)
+                if df.empty:
+                    failed_assets.append(name)
+                else:
+                    context[key] = df
+                    success_count += 1
                 time.sleep(0.5)  # Rate limiting
             except Exception as e:
                 print(f"[YAHOO] {name} unavailable: {str(e)}")
