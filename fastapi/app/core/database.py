@@ -15,11 +15,11 @@ from app.core.vault import get_database_credentials
 
 credentials = get_database_credentials()
 
-DB_HOST = credentials["POSTGRES_HOST"]
-DB_PORT = int(credentials["POSTGRES_PORT"])
-DB_NAME = credentials["POSTGRES_DB"]
-DB_USER = credentials["POSTGRES_USER"]
-DB_PASSWORD = credentials["POSTGRES_PASSWORD"]
+DB_HOST = settings.FASTAPI_DB_HOST
+DB_PORT = int(settings.FASTAPI_DB_PORT)
+DB_NAME = settings.FASTAPI_DB_NAME
+DB_USER = settings.FASTAPI_DB_USER
+DB_PASSWORD = settings.FASTAPI_DB_PASSWORD
 
 DATABASE_URL = get_database_url(
     host=DB_HOST,
