@@ -1,0 +1,167 @@
+# ============================================================================
+# RÈGLES D'ALERTE PROMETHEUS POUR LE MODÈLE ML
+# ============================================================================
+
+groups:
+  # ==========================================================================
+  # ALERTES MODÈLE ML - QUALITÉ DES PRÉDICTIONS
+  # ==========================================================================
+  - name: ml_model_quality
+    interval: 30s
+    rules:
+      # Alerte si la confiance moyenne est trop basse
+      - alert: LowModelConfidence
+        expr: |
+          (
+            avg(model_prediction_confidence) < 0.5
+          ) and (
+            rate(model_predictions_total[5m]) > 0
+          )
+        for: 5m
+        labels:
+          severity: warning
+          component: ml_model
+        annotations:
+          summary: "Confiance du modèle faible"
+          description: "La confiance moyenne des prédictions est inférieure à 50% depuis 5 minutes (actuel: {{ $value | humanizePercentage }})"
+
+      # Alerte si trop d'erreurs de prédiction
+      - alert: HighPredictionErrorRate
+        expr: |
+          (
+            rate(model_prediction_errors_total[5m]) / rate(model_predictions_total[5m])
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: ml_model
+        annotations:
+          summary: "Taux d'erreur de prédiction élevé"
+          description: "Plus de 5% des prédictions échouent depuis 2 minutes (taux: {{ $value | humanizePercentage }})"
+
+      # Alerte si le modèle prédit toujours la même classe
+      - alert: ModelPredictionBias
+        expr: |
+          (
+            max(rate(model_predictions_total[10m])) /
+            sum(rate(model_predictions_total[10m]))
+          ) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          component: ml_model
+        annotations:
+          summary: "Modèle biaisé vers une classe"
+          description: "Plus de 80% des prédictions sont de la même classe depuis 10 minutes"
+
+  # ==========================================================================
+  # ALERTES PERFORMANCE
+  # ==========================================================================
+  - name: ml_model_performance
+    interval: 30s
+    rules:
+      # Alerte si le temps de prédiction est trop long
+      - alert: SlowModelPrediction
+        expr: |
+          histogram_quantile(0.95,
+            rate(model_prediction_duration_seconds_bucket[5m])
+          ) > 1.0
+        for: 3m
+        labels:
+          severity: warning
+          component: ml_model
+        annotations:
+          summary: "Prédictions lentes"
+          description: "95% des prédictions prennent plus d'1 seconde (P95: {{ $value }}s)"
+
+      # Alerte si le temps de prédiction devient critique
+      - alert: CriticalModelPrediction
+        expr: |
+          histogram_quantile(0.99,
+            rate(model_prediction_duration_seconds_bucket[5m])
+          ) > 5.0
+        for: 2m
+        labels:
+          severity: critical
+          component: ml_model
+        annotations:
+          summary: "Prédictions très lentes"
+          description: "99% des prédictions prennent plus de 5 secondes (P99: {{ $value }}s)"
+
+      # Alerte si pas de prédiction depuis longtemps
+      - alert: NoModelPredictions
+        expr: |
+          rate(model_predictions_total[10m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          component: ml_model
+        annotations:
+          summary: "Aucune prédiction"
+          description: "Le modèle n'a fait aucune prédiction depuis 10 minutes"
+
+  # ==========================================================================
+  # ALERTES DRIFT & MONITORING
+  # ==========================================================================
+  - name: ml_model_drift
+    interval: 1m
+    rules:
+      # Alerte si distribution des probabilités change drastiquement
+      - alert: ProbabilityDistributionShift
+        expr: |
+          abs(
+            avg_over_time(model_avg_probability_long[1h]) -
+            avg_over_time(model_avg_probability_long[24h])
+          ) > 0.2
+        for: 30m
+        labels:
+          severity: warning
+          component: ml_model
+        annotations:
+          summary: "Changement de distribution des probabilités"
+          description: "La distribution des probabilités LONG a changé de plus de 20% par rapport aux dernières 24h"
+
+      # Alerte si le cache du modèle est inefficace
+      - alert: LowCacheHitRate
+        expr: |
+          (
+            rate(model_cache_hits_total[10m]) /
+            (rate(model_cache_hits_total[10m]) + rate(model_cache_misses_total[10m]))
+          ) < 0.5
+        for: 10m
+        labels:
+          severity: info
+          component: ml_model
+        annotations:
+          summary: "Taux de cache faible"
+          description: "Moins de 50% des requêtes utilisent le cache du modèle (taux: {{ $value | humanizePercentage }})"
+
+  # ==========================================================================
+  # ALERTES SYSTÈME
+  # ==========================================================================
+  - name: ml_system
+    interval: 30s
+    rules:
+      # Alerte si le modèle est rechargé trop fréquemment
+      - alert: FrequentModelReload
+        expr: |
+          rate(model_reload_total[30m]) > 0.1
+        for: 30m
+        labels:
+          severity: warning
+          component: ml_model
+        annotations:
+          summary: "Rechargements fréquents du modèle"
+          description: "Le modèle est rechargé plus de 3 fois par 30 minutes"
+
+      # Alerte si aucune métrique n'est collectée
+      - alert: NoMetricsCollected
+        expr: |
+          up{job="fastapi"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: monitoring
+        annotations:
+          summary: "Collecte de métriques interrompue"
+          description: "Prometheus ne peut plus collecter les métriques de l'API FastAPI"

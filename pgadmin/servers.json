@@ -1,0 +1,42 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "OrionTrader - Admin",
+      "Group": "OrionTrader",
+      "Host": "127.0.0.1",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "Comment": "Connexion superuser"
+    },
+    "2": {
+      "Name": "OrionTrader - Airflow",
+      "Group": "OrionTrader",
+      "Host": "127.0.0.1",
+      "Port": 5432,
+      "MaintenanceDB": "airflow",
+      "Username": "airflow",
+      "SSLMode": "prefer",
+      "Comment": "Connexion utilisateur Airflow"
+    },
+    "3": {
+      "Name": "OrionTrader - MLflow",
+      "Group": "OrionTrader",
+      "Host": "127.0.0.1",
+      "Port": 5432,
+      "MaintenanceDB": "mlflow",
+      "Username": "mlflow",
+      "SSLMode": "prefer"
+    },
+    "4": {
+      "Name": "OrionTrader - FastAPI",
+      "Group": "OrionTrader",
+      "Host": "127.0.0.1",
+      "Port": 5432,
+      "MaintenanceDB": "fastapi",
+      "Username": "fastapi",
+      "SSLMode": "prefer"
+    }
+  }
+}

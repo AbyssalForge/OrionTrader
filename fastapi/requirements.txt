@@ -1,0 +1,15 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.5
+pydantic-settings==2.7.1
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+pandas==2.2.3
+numpy==1.26.4
+python-dotenv==1.0.1
+requests==2.32.3
+hvac==2.3.0
+mlflow==3.8.0
+lightgbm==4.5.0
+prometheus-client==0.21.0
+prometheus-fastapi-instrumentator==7.0.0
