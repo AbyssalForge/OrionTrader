@@ -14,6 +14,7 @@ authors = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["airflow*", "fastapi*"]
+exclude = ["airflow.logs*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

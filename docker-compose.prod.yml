@@ -168,7 +168,7 @@ services:
       VAULT_ADDR: ${VAULT_ADDR:-http://10.8.0.1:8200}
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN}
       VAULT_MOUNT: ${VAULT_MOUNT:-OrionTrader}
-      FASTAPI_DB_HOST: ${POSTGRES_URL:-wg-easy}
+      FASTAPI_DB_HOST: ${POSTGRES_URL_VPN:-wg-easy}
       FASTAPI_DB_PORT: ${POSTGRES_PORT:-5432}
       FASTAPI_DB_NAME: ${FASTAPI_DB_NAME:-fastapi}
       FASTAPI_DB_USER: ${FASTAPI_DB_USER:-fastapi}

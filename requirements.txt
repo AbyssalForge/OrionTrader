@@ -122,4 +122,3 @@ freezegun==1.4.0  # Mock datetime
 faker==22.0.0  # Generate fake data
 
 # API Testing
-httpx==0.26.0  # Async HTTP client
